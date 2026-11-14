@@ -5,10 +5,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { after, before, test } from "node:test";
+import { withLogos } from "../scripts/brand-logos.mjs";
 import { SOURCES } from "../scripts/sources.mjs";
 import { ARRIVALS_ENTITY, boardHass, ENTITY } from "../scripts/screenshots/mock.mjs";
 
-const src = `{\n${SOURCES.map((n) => readFileSync(new URL(`../src/${n}.js`, import.meta.url), "utf8")).join("\n")}\n}`;
+const root = new URL("../", import.meta.url).pathname;
+const src = `{\n${SOURCES.map((n) => withLogos(readFileSync(new URL(`../src/${n}.js`, import.meta.url), "utf8"), root)).join("\n")}\n}`;
 const THEMES = {
   light: { "--card-background-color": "#fff", "--primary-text-color": "#212121", "--secondary-text-color": "#727272" },
   dark: { "--card-background-color": "#1c1c1c", "--primary-text-color": "#e1e1e1", "--secondary-text-color": "#9b9b9b" },

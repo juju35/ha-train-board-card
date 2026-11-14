@@ -10,6 +10,14 @@
 
 <p align="center"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/icon.svg" alt="Train Board Card" width="120"></p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/deutschebahn.svg" alt="Deutsche Bahn" width="64">&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/nationalrail.svg" alt="National Rail" width="64">&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/nederlandsespoorwegen.svg" alt="Nederlandse Spoorwegen" width="64">&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/sncf.svg" alt="SNCF" width="64">&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/public-transport.png" alt="Public Transport" width="64">
+</p>
+
 An animated departures and arrivals board of a railway station for Home Assistant: the next trains with their time, train type, destination, platform and status (on time, delayed, boarding, cancelled), and a compact mini card with the next train. The header is an illustration of a station where a train waits at the platform and leaves, or comes in and stops, by day and by night.
 
 The cards read the sensors of **twelve integrations** — [DB Infoscreen](https://github.com/FaserF/ha-db_infoscreen), [National Rail UK](https://github.com/jfparis/homeassistant_nationalrail), [National Rail Departure Times](https://github.com/crismc/homeassistant_nationalrailtimes_integration), [Swiss Transport](https://github.com/prusuino/ha_swiss_transport), [Public Transport](https://github.com/juju35/ha-public-transport), [Train Traveler](https://github.com/Matthyeux/train-traveler) and the Nederlandse Spoorwegen, Trafikverket Train, Swiss public transport, ViaggiaTreno, NMBS and UK Transport integrations included in Home Assistant: the integration is **detected automatically** from the entity, and the card adapts to what it provides.
@@ -28,6 +36,7 @@ The cards read the sensors of **twelve integrations** — [DB Infoscreen](https:
 ## Features
 
 - Two cards: a full **Train Board Card** and a compact **Train Board Mini Card**, of type `custom:train-board-card` and `custom:train-board-mini-card`
+- **Brand badge**: the logo of the railway behind the integration (Deutsche Bahn, National Rail, NS, SNCF, or the Public Transport icon) on the header icon, like the other multi-brand cards; `brand` (YAML only) picks another bundled logo, e.g. `obb` for a DB Infoscreen station on the ÖBB backend
 - Twelve integrations, detected from the entity (its integration in the entity registry, else its attributes), or forced with `integration`; see [Supported integrations](#supported-integrations)
 - **Animated header**: a station with its canopy, arched windows and a clock whose hand turns, catenary, platform with its yellow safety line, and a generic train (no operator livery) with its pantograph and an occasional spark. On the Departures tab the train waits at the platform then leaves to the right; on the Arrivals tab it comes in from the left and stops; the animation starts over when the tab changes. Nothing moves under the text: the station name and the statistics sit on the sky at the left
 - **Day and night**: at night the sky turns dark blue with stars and the moon, the station's windows and the platform lamps light up, the train's headlight shines. `illustration_theme: auto` follows `sun.sun` (Home Assistant's dark theme without it), or force `day` / `night`; `illustration: false` gives a classic header
@@ -48,18 +57,18 @@ The cards read the sensors of **twelve integrations** — [DB Infoscreen](https:
 
 | Integration | Link | Departures | Arrivals | Platform | Train type | What else |
 |---|---|---|---|---|---|---|
-| **DB Infoscreen** (`db_infoscreen`, custom) | [FaserF/ha-db_infoscreen](https://github.com/FaserF/ha-db_infoscreen) | ✓ board | ✓ second entry in arrival mode | ✓ with changes | ✓ ICE, IC, RE, S… and number | Delay, cancellation, via (with « keep route »), messages, station notices |
-| **National Rail UK** (`nationalrailuk`, custom) | [jfparis/homeassistant_nationalrail](https://github.com/jfparis/homeassistant_nationalrail) | ✓ board | — | ✓ | — | Expected time, « Delayed », « Cancelled », calling points with their times |
-| **National Rail Departure Times** (`nationalrailtimes`, custom) | [crismc/homeassistant_nationalrailtimes_integration](https://github.com/crismc/homeassistant_nationalrailtimes_integration) | ✓ next service | — | ✓ | — | Expected time, operator, calling points, delay and cancel reasons, station messages |
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/deutschebahn.svg" alt="" width="20"> **DB Infoscreen** (`db_infoscreen`, custom) | [FaserF/ha-db_infoscreen](https://github.com/FaserF/ha-db_infoscreen) | ✓ board | ✓ second entry in arrival mode | ✓ with changes | ✓ ICE, IC, RE, S… and number | Delay, cancellation, via (with « keep route »), messages, station notices |
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/nationalrail.svg" alt="" width="20"> **National Rail UK** (`nationalrailuk`, custom) | [jfparis/homeassistant_nationalrail](https://github.com/jfparis/homeassistant_nationalrail) | ✓ board | — | ✓ | — | Expected time, « Delayed », « Cancelled », calling points with their times |
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/nationalrail.svg" alt="" width="20"> **National Rail Departure Times** (`nationalrailtimes`, custom) | [crismc/homeassistant_nationalrailtimes_integration](https://github.com/crismc/homeassistant_nationalrailtimes_integration) | ✓ next service | — | ✓ | — | Expected time, operator, calling points, delay and cancel reasons, station messages |
 | **Swiss Transport** (`swiss_transport`, custom) | [prusuino/ha_swiss_transport](https://github.com/prusuino/ha_swiss_transport) | ✓ station board, or a saved connection | — | ✓ with changes | ✓ IC, IR, RE, S… and number | Delay, cancellation and alerts (with the real-time token) |
-| **Public Transport** (`public_transport`, custom) | [juju35/ha-public-transport](https://github.com/juju35/ha-public-transport) | ✓ stop or line sensor | — | — | ✓ line, in its colour | Real time or timetable, alerts |
-| **Train Traveler** (`train_traveler`, custom) | [Matthyeux/train-traveler](https://github.com/Matthyeux/train-traveler) | ✓ journeys | — | — | ✓ TER, TGV INOUI… | Delay, disruptions, arrival at destination |
-| **Nederlandse Spoorwegen** (built in) | [nederlandse_spoorwegen](https://www.home-assistant.io/integrations/nederlandse_spoorwegen/) | ✓ next trip and the next one | — | ✓ with changes | — | Delay, cancellation, route |
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/public-transport.png" alt="" width="20"> **Public Transport** (`public_transport`, custom) | [juju35/ha-public-transport](https://github.com/juju35/ha-public-transport) | ✓ stop or line sensor | — | — | ✓ line, in its colour | Real time or timetable, alerts |
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/sncf.svg" alt="" width="20"> **Train Traveler** (`train_traveler`, custom) | [Matthyeux/train-traveler](https://github.com/Matthyeux/train-traveler) | ✓ journeys | — | — | ✓ TER, TGV INOUI… | Delay, disruptions, arrival at destination |
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/nederlandsespoorwegen.svg" alt="" width="20"> **Nederlandse Spoorwegen** (built in) | [nederlandse_spoorwegen](https://www.home-assistant.io/integrations/nederlandse_spoorwegen/) | ✓ next trip and the next one | — | ✓ with changes | — | Delay, cancellation, route |
 | **Trafikverket Train** (built in) | [trafikverket_train](https://www.home-assistant.io/integrations/trafikverket_train/) | ✓ next train and the two next times | — | — | — | Delay, cancellation, deviation and other information |
 | **Swiss public transport** (built in) | [swiss_public_transport](https://www.home-assistant.io/integrations/swiss_public_transport/) | ✓ three next connections | — | ✓ first one | ✓ first one | Delay of the first one |
 | **ViaggiaTreno** (built in) | [viaggiatreno](https://www.home-assistant.io/integrations/viaggiatreno/) | ✓ the followed train | — | — | ✓ FR, IC, REG… and number | Delay, cancellation |
 | **NMBS / SNCB** (built in) | [nmbs](https://www.home-assistant.io/integrations/nmbs/) | ✓ next train (liveboard or connection) | — | ✓ | ✓ IC, S, L… and number | Delay, cancellation, via |
-| **UK Transport** (built in) | [uk_transport](https://www.home-assistant.io/integrations/uk_transport/) | ✓ next trains (live train time sensor) | — | ✓ | — | Expected time, cancellation, operator |
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/images/nationalrail.svg" alt="" width="20"> **UK Transport** (built in) | [uk_transport](https://www.home-assistant.io/integrations/uk_transport/) | ✓ next trains (live train time sensor) | — | ✓ | — | Expected time, cancellation, operator |
 
 The real station boards (DB Infoscreen, National Rail UK, Swiss Transport, Public Transport) fill the card; the route integrations (Nederlandse Spoorwegen, Trafikverket, Swiss public transport, Train Traveler…) give one to three trains between two stations, and the card shows what they provide: no tabs without arrivals, no platform column without platforms, no type pill without categories, no status pill for a train known from the timetable only.
 
@@ -242,6 +251,7 @@ entity: sensor.train_traveler_ren_nan_journeys
 | `arrival_entity` | both | — | A second sensor of the station, shown in the Arrivals tab (DB Infoscreen in arrival mode, or any supported sensor); its trains are listed « from » their origin |
 | `integration` | both | Automatic | Forces the integration when the detection fails: `db_infoscreen`, `nationalrailuk`, `nationalrailtimes`, `swiss_transport`, `public_transport`, `nederlandse_spoorwegen`, `trafikverket_train`, `swiss_public_transport`, `viaggiatreno`, `nmbs`, `uk_transport` or `train_traveler` |
 | `title` | both | Station name | Title of the card |
+| `brand` | both | From the integration | YAML only: the logo of the brand badge on the header icon — `deutschebahn`, `nationalrail`, `nederlandsespoorwegen`, `sncf`, `obb` or `public-transport` (see [Brand logos](#brand-logos)) |
 | `illustration` | both | `true` | The animated station header; `false` gives a classic header with a round tinted icon |
 | `illustration_theme` | both | `auto` | `auto` (night while `sun.sun` is below the horizon; without `sun.sun`, Home Assistant's dark theme), `day` or `night` |
 | `default_tab` | both | `departures` | Tab shown first: `departures` or `arrivals` (the mini card shows the next train of this tab) |
@@ -303,6 +313,10 @@ entity: sensor.train_traveler_ren_nan_journeys
 | **Cancelled** (red) | Cancelled; the time is struck through |
 
 A train known from the timetable only (the « next » trains of Nederlandse Spoorwegen and Trafikverket, the later connections of Swiss public transport, a Public Transport departure without real time) has no status pill. A departure leaves the board a minute after its time, an arrival five minutes after. The share of trains on time counts the trains with real-time data; cancelled and delayed ones are not on time.
+
+### Brand logos
+
+The header icon carries the logo of the railway behind the detected integration, on a white tile readable in light and dark themes: Deutsche Bahn (DB Infoscreen), National Rail (National Rail UK, National Rail Departure Times, UK Transport), NS (Nederlandse Spoorwegen), SNCF (Train Traveler) and the Public Transport integration's own icon. The logos are embedded in the card (no network); a brand without a logo file gets no badge (Swiss Transport and Swiss public transport, Trafikverket, ViaggiaTreno, NMBS for now). The railway logos come from [Simple Icons](https://simpleicons.org) (CC0), in each brand's colour.
 
 ### Train type colours
 
@@ -384,7 +398,7 @@ Issues and pull requests are welcome. Another integration of train departures? O
 
 ## Credits
 
-The illustration is an original drawing: the train is generic and carries no operator livery or logo. Integration names belong to their authors and to the railway operators whose data they read; this project is not affiliated with any of them.
+The illustration is an original drawing: the train is generic and carries no operator livery or logo. The brand logos of the badges come from [Simple Icons](https://simpleicons.org) (CC0); Deutsche Bahn, National Rail, NS, SNCF and ÖBB and their logos are trademarks of their owners. Integration names belong to their authors and to the railway operators whose data they read; this project is not affiliated with any of them.
 
 ## License
 

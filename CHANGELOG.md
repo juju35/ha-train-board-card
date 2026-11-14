@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0 - 2026-11-14
+
+### Features
+- **Brand badge** on the header icon, as on the other multi-brand cards: the logo of the railway behind the detected integration — Deutsche Bahn (DB Infoscreen), National Rail (National Rail UK, National Rail Departure Times, UK Transport), NS (Nederlandse Spoorwegen), SNCF (Train Traveler) — and the Public Transport integration's icon, on a white tile readable in both themes; beside the train icon of the title on the illustrated header, on the round icon of the classic header. The logos are embedded in the bundle; a brand without a logo file gets no badge.
+- `brand` (YAML only) picks another bundled logo, e.g. `obb` for a DB Infoscreen station on the ÖBB backend.
+- README: the supported railways' logos under the project's icon, and in the Supported integrations table. Railway logos from Simple Icons (CC0), in each brand's colour.
+
 ## 1.0.0 - 2026-11-14
 
 First release ([#1](https://github.com/juju35/ha-train-board-card/issues/1)).

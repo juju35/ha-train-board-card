@@ -15,6 +15,9 @@ const TB_ICONS = {
     "M11,15H13V17H11V15M11,7H13V13H11V7M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20Z",
 };
 
+// Brand logos, by slug, embedded by the build from images/<slug>.svg or .png (scripts/brand-logos.mjs).
+const TB_BRAND_LOGOS = {} /* __BRAND_LOGOS__ */;
+
 const tbEsc = (v) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const tbIcon = (path, cls = "") => `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
@@ -322,6 +325,14 @@ const TB_BANNER_STYLE = `
            display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .title { display: flex; align-items: center; gap: 6px; min-width: 0; }
   .title .icon { width: 20px; height: 20px; color: var(--tb-accent); }
+  .ticon { position: relative; display: inline-flex; flex: none; }
+  /* Brand badge on the header icon: the logo on a white tile, readable on any theme. */
+  .badge { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 5px; padding: 2px; box-sizing: border-box;
+           display: grid; place-items: center; background: #fff;
+           box-shadow: 0 0 0 1px var(--divider-color, rgba(0,0,0,.12)), 0 0 0 3px var(--card-background-color, #fff); }
+  .badge img { width: 100%; height: 100%; object-fit: contain; }
+  .ticon .badge { right: -7px; bottom: -4px; width: 14px; height: 14px; padding: 1.5px; border-radius: 4px; box-shadow: 0 0 0 1px rgba(16,40,63,.18); }
+  .ticon:has(.badge) { margin-right: 6px; }
   .night .title .icon { color: #9cc3ff; }
   .title .name { font-size: 16px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   /* On one line when they fit, else wrapped: the « · » that starts a line sits in the negative margin, clipped. */
@@ -338,6 +349,7 @@ const TB_BANNER_STYLE = `
   .header { display: flex; align-items: center; gap: 10px; padding: 12px 12px 8px; }
   .logo { height: 40px; width: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; color: var(--tb-accent);
           background: color-mix(in srgb, var(--tb-accent) 16%, transparent); }
+  .logo { position: relative; }
   .logo .icon { width: 24px; height: 24px; }
   .header .titles { flex: 1; min-width: 0; }
   .header .name { font-size: 16px; font-weight: 500; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -598,18 +610,26 @@ class TbBase extends HTMLElement {
     const c = this._config;
     const name = tbEsc(this._name(board));
     if (tbOpt(c, "illustration") === false) {
-      return `<div class="header"><div class="logo">${tbIcon(TB_ICONS.train)}</div><div class="titles"><div class="name">${name}</div>${
+      return `<div class="header"><div class="logo">${tbIcon(TB_ICONS.train)}${this._badge(board)}</div><div class="titles"><div class="name">${name}</div>${
         extra.classic
       }</div>${this._zoomButton()}</div>`;
     }
     const cls = `banner ${tabKey === "arrivals" ? "arr" : "dep"}${tbIsNight(this._hass, c) ? " night" : ""}`;
-    return `<div class="${cls}">${tbSceneSvg(this._uid)}<div class="htext"><div class="title">${tbIcon(TB_ICONS.train)}<span class="name">${name}</span></div>${
+    return `<div class="${cls}">${tbSceneSvg(this._uid)}<div class="htext"><div class="title"><span class="ticon">${tbIcon(TB_ICONS.train)}${this._badge(board)}</span><span class="name">${name}</span></div>${
       extra.banner
     }</div>${this._zoomButton()}</div>`;
   }
 
   _zoomButton() {
     return "";
+  }
+
+  // The brand's logo in a badge on the header icon: the operator of the detected integration (`brand` in YAML picks
+  // another one), only when its logo is in the bundle.
+  _badge(board) {
+    const slug = this._config.brand || board.adapter?.brand;
+    const logo = slug && TB_BRAND_LOGOS[slug];
+    return logo ? `<span class="badge" title="${tbEsc(board.adapter?.name || "")}"><img src="${tbEsc(logo)}" alt=""></span>` : "";
   }
 
   // The illustration's styles, only when it is shown.
