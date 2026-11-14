@@ -1,0 +1,7 @@
+{
+  "name": "Train Board Card",
+  "render_readme": true,
+  "content_in_root": false,
+  "filename": "train-board-card.js",
+  "homeassistant": "2024.8.0"
+}
