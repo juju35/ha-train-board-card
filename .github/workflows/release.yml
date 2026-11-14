@@ -31,7 +31,9 @@ jobs:
       contents: read
 
   release:
-    needs: [lint, validate, hacs]
+    # TEMPORARY (first release only): HACS validation needs an existing release to pass,
+    # so it cannot gate v1.0.0. Restore `hacs` in needs right after v1.0.0 is published.
+    needs: [lint, validate]
     runs-on: ubuntu-latest
     # Debian 12 container (Node 22 included): apt goes to the Debian mirrors, not the runner's Ubuntu ones,
     # which kept failing. The job runs as root, hence no sudo below.
