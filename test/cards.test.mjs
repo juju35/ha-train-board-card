@@ -149,7 +149,9 @@ test("the mini card: the next train on the banner, the detail button unfolds the
   const card = mount("train-board-mini-card", { entity: DEP, arrival_entity: ARR });
   let h = html(card);
   assert.doesNotMatch(h, /class="list/);
-  assert.match(text(h), /Köln Hbf 08:12 in 16 min ICE Hamburg-Altona 6 \+4 min/);
+  assert.match(text(h), /^08:12 in 16 min ICE Hamburg-Altona 6 \+4 min$/);
+  // The round icon (with the station's name in its tooltip) beside the next train, same size as on the full card.
+  assert.match(h, /<div class="htext"><div class="logo" title="Köln Hbf"><svg class="icon /);
   assert.match(h, /class="iconbtn zoom" data-action="zoom"[^>]*aria-expanded="false"/);
   assert.deepEqual({ ...card.getGridOptions() }, { columns: 6, min_columns: 6 });
   click(card, { action: "zoom" });
@@ -250,7 +252,8 @@ test("stub configuration: the first entity of a supported integration; registrat
 test("brand badge: the operator of the integration on the header icon, only when its logo is bundled", () => {
   const badge = (h) => h.match(/<span class="badge" title="([^"]*)"><img src="data:image\/(svg\+xml|png)/);
   assert.equal(badge(html(mount("train-board-card", { entity: DEP })))[1], "DB Infoscreen");
-  assert.match(html(mount("train-board-card", { entity: DEP })), /<span class="ticon">/);
+  // The illustrated header: the round tinted icon, its badge at the bottom right, then the title and the statistics.
+  assert.match(html(mount("train-board-card", { entity: DEP })), /<div class="htext"><div class="logo" title="Köln Hbf"><svg[\s\S]*?<\/svg><span class="badge"[\s\S]*?<\/span><\/div><div class="titles"><div class="name">Köln Hbf<\/div><div class="stats">/);
   assert.equal(badge(html(mount("train-board-card", { entity: DEP, illustration: false })))[1], "DB Infoscreen");
   assert.equal(badge(html(mount("train-board-mini-card", { entity: DEP })))[1], "DB Infoscreen");
   assert.ok(badge(html(mount("train-board-card", { entity: "sensor.train_schedule_wyb_wat" }, fx.nationalRailUk()))));
