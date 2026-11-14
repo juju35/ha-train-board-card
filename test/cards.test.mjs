@@ -246,3 +246,45 @@ test("stub configuration: the first entity of a supported integration; registrat
   const types = tb.sandbox.window.customCards.map((c) => c.type);
   assert.deepEqual([...types], ["train-board-card", "train-board-mini-card"]);
 });
+
+test("brand badge: the operator of the integration on the header icon, only when its logo is bundled", () => {
+  const badge = (h) => h.match(/<span class="badge" title="([^"]*)"><img src="data:image\/(svg\+xml|png)/);
+  assert.equal(badge(html(mount("train-board-card", { entity: DEP })))[1], "DB Infoscreen");
+  assert.match(html(mount("train-board-card", { entity: DEP })), /<span class="ticon">/);
+  assert.equal(badge(html(mount("train-board-card", { entity: DEP, illustration: false })))[1], "DB Infoscreen");
+  assert.equal(badge(html(mount("train-board-mini-card", { entity: DEP })))[1], "DB Infoscreen");
+  assert.ok(badge(html(mount("train-board-card", { entity: "sensor.train_schedule_wyb_wat" }, fx.nationalRailUk()))));
+  assert.ok(badge(html(mount("train-board-card", { entity: "sensor.amsterdam_utrecht_departure" }, fx.nederlandseSpoorwegen()))));
+  assert.ok(badge(html(mount("train-board-card", { entity: "sensor.train_traveler_ren_nan_journeys" }, fx.trainTraveler()))));
+  assert.equal(badge(html(mount("train-board-card", { entity: "sensor.gares_next_departure" }, fx.publicTransport())))[2], "png");
+  // `brand` (YAML) picks another bundled logo.
+  assert.match(html(mount("train-board-card", { entity: DEP, brand: "obb" })), /%23E40327/);
+  // Every integration has its logo; a brand without one gets no badge, no empty tile.
+  for (const [h, id] of [
+    [fx.swissTransport(), "sensor.swiss_transport_bern_ab12"],
+    [fx.nmbs(), "sensor.trains_in_gent_sint_pieters"],
+    [fx.viaggiatreno(), "sensor.train_9544"],
+    [fx.trafikverket(), "sensor.stockholm_c_uppsala_c_departure_time"],
+    [fx.swissPublicTransport(), "sensor.zurich_hb_luzern_departure"],
+  ])
+    assert.ok(badge(html(mount("train-board-card", { entity: id }, h))), id);
+  assert.doesNotMatch(html(mount("train-board-card", { entity: DEP, brand: "unknown" })), /class="badge"/);
+  // The wide logotypes: the badge shows their emblem alone (no text paths).
+  const tv = html(mount("train-board-card", { entity: "sensor.stockholm_c_uppsala_c_departure_time" }, fx.trafikverket()));
+  assert.doesNotMatch(decodeURIComponent(tv.match(/<img src="data:image\/svg\+xml,([^"]*)"/)[1]), /<path[^>]*fill="#000000"/);
+  const brands = Object.fromEntries(tb.TB_ADAPTERS.map((a) => [a.id, a.brand]));
+  assert.deepEqual(brands, {
+    db_infoscreen: "deutschebahn",
+    nationalrailuk: "nationalrail",
+    nationalrailtimes: "nationalrail",
+    swiss_transport: "sbb",
+    public_transport: "public-transport",
+    nederlandse_spoorwegen: "nederlandsespoorwegen",
+    trafikverket_train: "trafikverket",
+    swiss_public_transport: "sbb",
+    viaggiatreno: "trenitalia",
+    nmbs: "sncb",
+    uk_transport: "nationalrail",
+    train_traveler: "sncf",
+  });
+});

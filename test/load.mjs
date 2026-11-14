@@ -5,9 +5,11 @@ process.env.TZ = "UTC";
 // the tests read.
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
+import { withLogos } from "../scripts/brand-logos.mjs";
 import { SOURCES } from "../scripts/sources.mjs";
 
-const read = (name) => readFileSync(new URL(`../src/${name}.js`, import.meta.url), "utf8");
+const root = new URL("../", import.meta.url).pathname;
+const read = (name) => withLogos(readFileSync(new URL(`../src/${name}.js`, import.meta.url), "utf8"), root);
 
 export const load = ({ now } = {}) => {
   const registry = new Map();

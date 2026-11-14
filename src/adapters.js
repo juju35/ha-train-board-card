@@ -192,6 +192,8 @@ const TB_ADAPTERS = [
   {
     // FaserF/ha-db_infoscreen: next_departures, from the DBF / IRIS / HAFAS / EFA backends.
     id: "db_infoscreen",
+    // Badge logo: images/deutschebahn.svg (or .png), embedded by the build when the file exists.
+    brand: "deutschebahn",
     name: "DB Infoscreen",
     url: "https://github.com/FaserF/ha-db_infoscreen",
     detect: (s) => Array.isArray(tbAttr(s, "next_departures")) && "station" in (s.attributes || {}),
@@ -233,6 +235,8 @@ const TB_ADAPTERS = [
   {
     // jfparis/homeassistant_nationalrail (nationalrailuk): trains, from Darwin's departure board.
     id: "nationalrailuk",
+    // Badge logo: images/nationalrail.svg (or .png), embedded by the build when the file exists.
+    brand: "nationalrail",
     name: "National Rail UK",
     url: "https://github.com/jfparis/homeassistant_nationalrail",
     detect: (s) => tbList(tbAttr(s, "trains")).some((t) => t && "terminus" in t),
@@ -259,6 +263,8 @@ const TB_ADAPTERS = [
   {
     // crismc/homeassistant_nationalrailtimes_integration (nationalrailtimes): the next service to a destination.
     id: "nationalrailtimes",
+    // Badge logo: images/nationalrail.svg (or .png), embedded by the build when the file exists.
+    brand: "nationalrail",
     name: "National Rail Departure Times",
     url: "https://github.com/crismc/homeassistant_nationalrailtimes_integration",
     detect: (s) => !!tbAttr(s, "service") && "calling_points" in (s.attributes || {}),
@@ -288,6 +294,8 @@ const TB_ADAPTERS = [
   {
     // prusuino/ha_swiss_transport (swiss_transport): the station board (departures), or a saved connection.
     id: "swiss_transport",
+    // Badge logo: images/sbb.svg (or .png), embedded by the build when the file exists.
+    brand: "sbb",
     name: "Swiss Transport",
     url: "https://github.com/prusuino/ha_swiss_transport",
     detect: (s) => [...tbList(tbAttr(s, "departures")), ...tbList(tbAttr(s, "connections"))].some((d) => d && "departure_ts" in d),
@@ -331,6 +339,8 @@ const TB_ADAPTERS = [
   {
     // juju35/ha-public-transport (public_transport): the stop sensor (departures) or a line sensor (next_departures).
     id: "public_transport",
+    // Badge logo: images/public-transport.svg (or .png), embedded by the build when the file exists.
+    brand: "public-transport",
     name: "Public Transport",
     url: "https://github.com/juju35/ha-public-transport",
     detect: (s) => [...tbList(tbAttr(s, "departures")), ...tbList(tbAttr(s, "next_departures"))].some((d) => d && "line_id" in d),
@@ -356,6 +366,8 @@ const TB_ADAPTERS = [
   {
     // Nederlandse Spoorwegen (core): the departure sensor of a route, its next trip from the timetable.
     id: "nederlandse_spoorwegen",
+    // Badge logo: images/nederlandsespoorwegen.svg (or .png), embedded by the build when the file exists.
+    brand: "nederlandsespoorwegen",
     name: "Nederlandse Spoorwegen",
     url: "https://www.home-assistant.io/integrations/nederlandse_spoorwegen/",
     detect: (s) => "going" in (s?.attributes || {}) && "departure_time_planned" in s.attributes,
@@ -385,6 +397,8 @@ const TB_ADAPTERS = [
   {
     // Trafikverket Train (core): one device per route, a sensor per value (found by translation key).
     id: "trafikverket_train",
+    // Badge logo: images/trafikverket.svg (or .png), embedded by the build when the file exists.
+    brand: "trafikverket",
     name: "Trafikverket Train",
     url: "https://www.home-assistant.io/integrations/trafikverket_train/",
     detect: (s) => /trafikverket/i.test(tbStr(tbAttr(s, "attribution"))),
@@ -418,6 +432,8 @@ const TB_ADAPTERS = [
     // Swiss public transport (core): departure, departure1 and departure2 sensors of a connection, plus line,
     // platform and delay for the first one.
     id: "swiss_public_transport",
+    // Badge logo: images/sbb.svg (or .png), embedded by the build when the file exists.
+    brand: "sbb",
     name: "Swiss public transport",
     url: "https://www.home-assistant.io/integrations/swiss_public_transport/",
     detect: (s) => /transport\.opendata\.ch/i.test(tbStr(tbAttr(s, "attribution"))) && !tbAttr(s, "departures") && !tbAttr(s, "connections"),
@@ -449,6 +465,8 @@ const TB_ADAPTERS = [
   {
     // ViaggiaTreno (core): one train followed by its number (Trenitalia).
     id: "viaggiatreno",
+    // Badge logo: images/trenitalia.svg (or .png), embedded by the build when the file exists.
+    brand: "trenitalia",
     name: "ViaggiaTreno",
     url: "https://www.home-assistant.io/integrations/viaggiatreno/",
     detect: (s) => "numeroTreno" in (s?.attributes || {}),
@@ -472,6 +490,8 @@ const TB_ADAPTERS = [
   {
     // NMBS / SNCB (core): the liveboard sensor of a station or the connection sensor between two stations.
     id: "nmbs",
+    // Badge logo: images/sncb.svg (or .png), embedded by the build when the file exists.
+    brand: "sncb",
     name: "NMBS / SNCB",
     url: "https://www.home-assistant.io/integrations/nmbs/",
     detect: (s) => "vehicle_id" in (s?.attributes || {}) && "departure_minutes" in s.attributes,
@@ -498,6 +518,8 @@ const TB_ADAPTERS = [
   {
     // UK Transport (core): the live train time sensor (transportapi.com).
     id: "uk_transport",
+    // Badge logo: images/nationalrail.svg (or .png), embedded by the build when the file exists.
+    brand: "nationalrail",
     name: "UK Transport",
     url: "https://www.home-assistant.io/integrations/uk_transport/",
     detect: (s) => Array.isArray(tbAttr(s, "next_trains")) || ("station_code" in (s?.attributes || {}) && "calling_at" in s.attributes),
@@ -519,6 +541,8 @@ const TB_ADAPTERS = [
   {
     // Matthyeux/train-traveler (train_traveler): the journeys sensor or a next journey sensor (SNCF / Navitia).
     id: "train_traveler",
+    // Badge logo: images/sncf.svg (or .png), embedded by the build when the file exists.
+    brand: "sncf",
     name: "Train Traveler",
     url: "https://github.com/Matthyeux/train-traveler",
     detect: (s) => tbList(tbAttr(s, "journeys")).some((j) => j && "physical_mode" in j) || "physical_mode" in (s?.attributes || {}),
