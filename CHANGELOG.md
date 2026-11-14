@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 - 2026-11-14
+
+### Changes
+- **Illustrated header aligned on the other ha-* cards** (and on the flight board card): the round tinted icon of 40 px at the left of the sky, the train icon inside and the brand badge at its bottom right, then the station name and the statistics beside it — instead of a small train icon beside the title. The mini card has the same 40 px icon, with the next train beside it (the station's name in the icon's tooltip). The text still stops where the station starts: nothing moves under it.
+
 ## 1.1.0 - 2026-11-14
 
 ### Features

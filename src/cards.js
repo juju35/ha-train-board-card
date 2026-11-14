@@ -321,20 +321,20 @@ const TB_BASE_STYLE = `
 // The banner's text, posed on the sky at its left: the scene starts at x 150 of its 320 × 78 picture, drawn to
 // the right edge at the banner's height (or less on a narrow card), so the text stops where the scene starts.
 const TB_BANNER_STYLE = `
-  .htext { position: absolute; left: 12px; top: 10px; bottom: 8px; right: calc(min(53.125cqw, var(--tb-scene-w)) + 4px);
-           display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .title { display: flex; align-items: center; gap: 6px; min-width: 0; }
-  .title .icon { width: 20px; height: 20px; color: var(--tb-accent); }
-  .ticon { position: relative; display: inline-flex; flex: none; }
+  /* The round tinted icon (40 px, the brand badge at its bottom right), then the title and the statistics (the mini
+     card: the next train), centred on the sky. */
+  .htext { position: absolute; left: 12px; top: 6px; bottom: 6px; right: calc(min(53.125cqw, var(--tb-scene-w)) + 4px);
+           display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .htext .titles { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .banner .logo { color: var(--tb-accent); background: rgba(255,255,255,.62); box-shadow: inset 0 0 0 1px rgba(47,125,225,.18); }
+  .banner.night .logo { color: #9cc3ff; background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+  .banner .badge { box-shadow: 0 0 0 1px rgba(13,42,69,.16), 0 1px 3px rgba(13,42,69,.18); }
   /* Brand badge on the header icon: the logo on a white tile, readable on any theme. */
   .badge { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 5px; padding: 2px; box-sizing: border-box;
            display: grid; place-items: center; background: #fff;
            box-shadow: 0 0 0 1px var(--divider-color, rgba(0,0,0,.12)), 0 0 0 3px var(--card-background-color, #fff); }
   .badge img { width: 100%; height: 100%; object-fit: contain; }
-  .ticon .badge { right: -7px; bottom: -4px; width: 14px; height: 14px; padding: 1.5px; border-radius: 4px; box-shadow: 0 0 0 1px rgba(16,40,63,.18); }
-  .ticon:has(.badge) { margin-right: 6px; }
-  .night .title .icon { color: #9cc3ff; }
-  .title .name { font-size: 16px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .htext .name { font-size: 16px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   /* On one line when they fit, else wrapped: the « · » that starts a line sits in the negative margin, clipped. */
   .stats { font-size: 12px; line-height: 16px; color: #3d5670; overflow: hidden; }
   .stats .parts { display: flex; flex-wrap: wrap; margin-left: -12px; }
@@ -414,10 +414,9 @@ const TB_DIALOG_STYLE = `
 
 const TB_MINI_STYLE = `
   .banner { --tb-banner-h: 100px; --tb-scene-w: 218px; }
-  .htext { gap: 1px; top: 8px; bottom: 6px; }
-  .htext .title .name { font-size: 14px; }
-  .nt-time { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-  .nt-time b { font-size: 22px; font-weight: 700; line-height: 26px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .htext .titles { gap: 1px; }
+  .nt-time { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .nt-time b { font-size: 20px; font-weight: 700; line-height: 26px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .nt-time b.struck { text-decoration: line-through; opacity: .7; }
   .nt-time .rel { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .nt-line, .nt-meta { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; line-height: 20px; }
@@ -615,9 +614,11 @@ class TbBase extends HTMLElement {
       }</div>${this._zoomButton()}</div>`;
     }
     const cls = `banner ${tabKey === "arrivals" ? "arr" : "dep"}${tbIsNight(this._hass, c) ? " night" : ""}`;
-    return `<div class="${cls}">${tbSceneSvg(this._uid)}<div class="htext"><div class="title"><span class="ticon">${tbIcon(TB_ICONS.train)}${this._badge(board)}</span><span class="name">${name}</span></div>${
+    // The mini card's sky holds the next train: the station's name stays in the icon's tooltip.
+    const title = extra.noName ? "" : `<div class="name">${name}</div>`;
+    return `<div class="${cls}">${tbSceneSvg(this._uid)}<div class="htext"><div class="logo" title="${name}">${tbIcon(TB_ICONS.train)}${this._badge(board)}</div><div class="titles">${title}${
       extra.banner
-    }</div>${this._zoomButton()}</div>`;
+    }</div></div>${this._zoomButton()}</div>`;
   }
 
   _zoomButton() {
@@ -860,7 +861,7 @@ class TrainBoardMiniCard extends TrainBoardCard {
         <div class="nt-line">${this._typePill(t)}<span class="dest">${tbEsc(this._place(t, tab.kind))}</span></div>
         <div class="nt-meta">${plat}${this._statusPill(t, tab.kind, now)}</div>`;
     } else info = `<div class="nt-line">${tbEsc(this._t("no_trains"))}</div>`;
-    const header = this._header(board, tabKey, { banner: info, classic: `<div class="stats">${this._stats(tabKey, tab)}</div>` });
+    const header = this._header(board, tabKey, { banner: info, noName: true, classic: `<div class="stats">${this._stats(tabKey, tab)}</div>` });
     const below = tbOpt(this._config, "illustration") === false ? `<div class="next">${info}</div>` : "";
     return `<style>${TB_BASE_STYLE}${this._sceneStyle()}${TB_BANNER_STYLE}${TB_MINI_STYLE}</style><ha-card>${header}${below}</ha-card>`;
   }

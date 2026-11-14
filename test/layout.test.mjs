@@ -56,6 +56,15 @@ const measure = async (cases) => {
         const svg = sr.querySelector(".tb-scene");
         const text = sr.querySelector(".htext");
         const res = { name: JSON.stringify(c), overflow: [] };
+        // The round icon of the header: 40 px on both cards, its badge inside the banner.
+        const logo = sr.querySelector(".htext .logo");
+        if (logo) {
+          const l = logo.getBoundingClientRect();
+          const b = logo.querySelector(".badge")?.getBoundingClientRect();
+          const banner = sr.querySelector(".banner").getBoundingClientRect();
+          res.logo = [Math.round(l.width), Math.round(l.height)];
+          res.badgeInside = !b || (b.left >= banner.left && b.bottom <= banner.bottom && b.top >= banner.top);
+        }
         // Nothing sticks out of the card on the right.
         for (const n of sr.querySelectorAll(".htext *, .row *, .tabs *, .nt-meta *")) {
           const r = n.getBoundingClientRect();
@@ -97,6 +106,14 @@ test("the banner's text stops where the scene starts, and the train stays right 
     assert.ok(r.textRight <= r.sceneLeft + 0.5, `${r.name}: text to ${r.textRight}, scene from ${r.sceneLeft}`);
     // The train shows only right of the fade's start, x 150 of the picture: the scene's start.
     assert.deepEqual(r.fade, [150, "0"], r.name);
+  }
+});
+
+test("the header's round icon is 40 px on the full and the mini card, its brand badge inside the banner", async (t) => {
+  if (skip) return t.skip(skip);
+  for (const r of await measure(cases)) {
+    assert.deepEqual(r.logo, [40, 40], r.name);
+    assert.ok(r.badgeInside, r.name);
   }
 });
 
