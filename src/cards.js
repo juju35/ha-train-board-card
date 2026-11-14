@@ -390,7 +390,7 @@ const TB_DIALOG_STYLE = `
   .mtitle b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mtitle span { font-size: 12px; }
   .mhead .iconbtn { color: var(--secondary-text-color); margin: -4px -6px -4px 0; }
-  .facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 13px; }
+  .facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 13px; margin: 0; }
   .facts dt { color: var(--secondary-text-color); }
   .facts dd { margin: 0; font-weight: 500; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .sect-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--secondary-text-color); margin-bottom: 4px; }
