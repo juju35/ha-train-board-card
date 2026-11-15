@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 - 2026-11-15
+
+### Fixes
+- **HTML notices reduced to plain text**: SNCF/GTFS disruptions arrive as HTML (`<p>`, `&nbsp;`, entities) and were shown raw in the notice bar. Tags and entities are now stripped, and notices that differ only by their markup collapse into one.
+
 ## 1.2.0 - 2026-11-14
 
 ### Changes

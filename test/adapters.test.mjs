@@ -160,6 +160,19 @@ test("Public Transport (public_transport): line colours, real time or timetable,
   assert.deepEqual([...r.messages], ["Escalator out of order — Use the lift."]);
 });
 
+test("notices carrying HTML are reduced to plain text, and ones that differ only by markup collapse", () => {
+  const hass = fx.publicTransport();
+  const s = hass.states["sensor.gares_next_departure"];
+  s.attributes.alerts = [
+    { id: "1", title: "Voitures hors quai", description: "<p>Dernières voitures non reçues<span> </span>à quai.</p>" },
+    { id: "2", title: "Voitures hors quai", description: "<div>Dernières voitures non reçues à quai.</div>\n" },
+  ];
+  const r = read(hass, "sensor.gares_next_departure");
+  assert.equal(r.messages.length, 1, "the two HTML variants collapse to one plain-text notice");
+  assert.equal(r.messages[0], "Voitures hors quai — Dernières voitures non reçues à quai.");
+  assert.ok(!/[<>]|&(?:nbsp|amp|lt|gt|quot|apos|#\d+);/i.test(r.messages[0]), "no tags or entities remain");
+});
+
 test("Nederlandse Spoorwegen: the trip (delay, platform change, route) and the next one from the timetable", () => {
   const r = read(fx.nederlandseSpoorwegen(), "sensor.amsterdam_utrecht_departure");
   assert.equal(r.adapter.id, "nederlandse_spoorwegen");
