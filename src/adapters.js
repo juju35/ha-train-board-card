@@ -16,6 +16,26 @@ const TB_NO_VALUE = new Set(["unavailable", "unknown", "", "none", "None"]);
 
 const tbList = (v) => (Array.isArray(v) ? v : v === null || v === undefined || v === "" ? [] : [v]);
 const tbStr = (v) => (v === null || v === undefined ? "" : String(v).trim());
+// Plain text from a notice that may carry HTML (SNCF/GTFS disruptions come as `<p>…</p>`, `&nbsp;`, entities):
+// drop the tags, turn block ends into spaces, decode the common entities, collapse whitespace. Stripping the
+// markup also lets notices that differ only by their HTML collapse through the Set dedup downstream.
+const tbDecode = (v) => {
+  const s = v === null || v === undefined ? "" : String(v);
+  if (s.indexOf("<") < 0 && s.indexOf("&") < 0) return s.replace(/\s+/g, " ").trim();
+  return s
+    .replace(/<(?:br|\/p|\/div|\/li|\/h[1-6])\s*\/?>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&(?:#39|apos);/gi, "'")
+    .replace(/&#(\d+);/g, (_m, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_m, n) => String.fromCodePoint(Number.parseInt(n, 16)))
+    .replace(/\s+/g, " ")
+    .trim();
+};
 const tbNum = (v) => {
   if (v === null || v === undefined || v === "" || typeof v === "boolean") return null;
   const n = typeof v === "number" ? v : parseFloat(String(v).replace(",", "."));
@@ -148,11 +168,11 @@ const tbTrain = (t) => {
 // The text of a notice: a string, or { text } / { title, description } / { message } objects.
 const tbMessage = (m) => {
   if (!m) return "";
-  if (typeof m === "string") return m.trim();
-  if (typeof m !== "object") return String(m);
+  if (typeof m === "string") return tbDecode(m);
+  if (typeof m !== "object") return tbDecode(m);
   const text = m.text ?? m.message ?? m.summary ?? m.disruption_message ?? m.title ?? m.header ?? "";
   const extra = m.description && m.description !== text ? ` — ${m.description}` : "";
-  return `${tbStr(text)}${extra}`.trim();
+  return tbDecode(`${tbStr(text)}${extra}`);
 };
 
 // db_infoscreen messages: a list of { text } or of strings, or { delay: [...], qos: [...] }.
