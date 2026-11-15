@@ -374,7 +374,7 @@ const TB_ADAPTERS = [
           delay: d.scheduled ? null : tbNum(d.delay),
           realtime: d.realtime !== false,
           place: d.destination,
-          type: d.line,
+          type: tbStr(d.train_number) || d.line,
           label: d.line,
           color: d.color,
           family: a.mode === "metro" || a.mode === "tram" ? "suburban" : a.mode === "bus" ? "bus" : "regional",
