@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.2 - 2026-11-15
+
+### Fixes
+- **Line badge no longer shifts on hover in Safari**: the departure rows used a subgrid. Under WebKit, hovering a row mis-distributed the sibling rows' `1fr` track and pushed the line badge to the right. Each row now carries its own explicit columns, with the same alignment.
+
 ## 1.2.1 - 2026-11-15
 
 ### Fixes

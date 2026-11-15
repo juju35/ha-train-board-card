@@ -370,10 +370,12 @@ const TB_FULL_STYLE = `
   .notice .icon { width: 15px; height: 15px; }
   .notice .txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .notice .more { flex: none; font-weight: 600; }
-  .list { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; column-gap: 10px; padding: 4px 4px 8px; }
-  .list.no-plat { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .row { grid-column: 1 / -1; display: grid; grid-template-columns: 3.4em minmax(0, 1fr) 2.4em 6em; grid-template-columns: subgrid;
+  /* Each row owns its columns (no subgrid): Safari/WebKit mis-distributes a subgrid row's 1fr track when a
+     sibling row is hovered, shifting the line badge right. Fixed time/platform tracks keep the columns aligned. */
+  .list { display: grid; padding: 4px 4px 8px; }
+  .row { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) 2.4em auto; column-gap: 10px;
          align-items: center; padding: 6px 8px; border-radius: 10px; font-size: 13px; min-height: 22px; position: relative; }
+  .list.no-plat .row { grid-template-columns: 3.4em minmax(0, 1fr) auto; }
   .row:hover { background: color-mix(in srgb, var(--primary-text-color, #212121) 5%, transparent); }
   .row + .row::before { content: ""; position: absolute; left: 8px; right: 8px; top: 0; border-top: 1px solid var(--divider-color, rgba(127,127,127,.12)); }
   .row:hover::before, .row:hover + .row::before { display: none; }
