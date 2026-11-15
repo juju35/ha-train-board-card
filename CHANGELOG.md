@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0 - 2026-11-15
+
+### Features
+- **Train number in the badge (Public Transport)**: the coloured badge now shows the run's own number (e.g. `8089`) rather than the line code (`401D`), using the `train_number` the Public Transport integration exposes; it falls back to the line code when no number is available. The line code stays in the row's accessible label.
+
 ## 1.2.2 - 2026-11-15
 
 ### Fixes
