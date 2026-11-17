@@ -1,5 +1,5 @@
-// Records the animations into screenshots/*.gif (needs ffmpeg), each with its dark twin (*-dark.gif): the train leaving
-// (Departures), coming in (Arrivals), the night picture, and the mini card. `illustration_theme: auto` except for the
+// Records the animations into screenshots/*.gif (needs ffmpeg), with dark twins (*-dark.gif): the train leaving
+// (Departures), coming in (Arrivals), the mini card, and the forced night picture (light theme only). `illustration_theme: auto` except for the
 // night GIF: day picture in the light theme, night picture in the dark one (dark theme rule).
 // Usage: npm install && npm run build && node scripts/screenshots/animations.mjs
 // CSS animations are paused and stepped frame by frame, each by a fraction of its own cycle, so every GIF loops
@@ -78,13 +78,14 @@ const GIFS = [
   // The full card's banner and tabs only (the list does not move).
   { file: "departure", tag: "train-board-card", config: board, banner: 152 },
   { file: "arrival", tag: "train-board-card", config: board, open: '[data-tab="arrivals"]', banner: 152 },
-  // The night scene, forced in both themes.
-  { file: "night", tag: "train-board-card", config: { ...board, illustration_theme: "night" }, banner: 152 },
+  // The night scene, forced. Light theme only: in the dark theme it would be the same GIF as departure-dark (one GIF per
+  // distinct state).
+  { file: "night", tag: "train-board-card", config: { ...board, illustration_theme: "night" }, banner: 152, themes: ["light"] },
   { file: "mini", tag: "train-board-mini-card", config: board, width: 380 },
 ];
 const browser = await launch();
 for (const g of GIFS) {
-  for (const theme of ["light", "dark"]) {
+  for (const theme of g.themes ?? ["light", "dark"]) {
     await record(browser, { ...g, theme, file: theme === "dark" ? `${g.file}-dark` : g.file });
   }
 }

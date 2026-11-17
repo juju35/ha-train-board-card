@@ -37,7 +37,7 @@ The cards read the sensors of **twelve integrations** — [DB Infoscreen](https:
 
 | Mini card | At night |
 |---|---|
-| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card-dark.png"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card.png" alt="Train board mini card" width="400"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night-dark.gif"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night.gif" alt="The station at night" width="400"></picture> |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card-dark.png"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card.png" alt="Train board mini card" width="400"></picture> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night.gif" alt="The station at night" width="400"> |
 
 ## Features
 
@@ -280,13 +280,16 @@ entity: sensor.train_traveler_ren_nan_journeys
 
 ### Animations
 
-With `illustration_theme: auto`, the light theme shows the day picture and the dark theme the night picture; the last row forces `illustration_theme: night`.
+With `illustration_theme: auto`, the light theme shows the day picture and the dark theme the night picture.
 
 | Light | Dark |
 |---|---|
 | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure.gif" alt="The train leaves the platform, light" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure-dark.gif" alt="The train leaves the platform, dark" width="400"> |
 | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival.gif" alt="The train comes in and stops, light" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival-dark.gif" alt="The train comes in and stops, dark" width="400"> |
-| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night.gif" alt="The station at night, light" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night-dark.gif" alt="The station at night, dark" width="400"> |
+
+Forced night (`illustration_theme: night`):
+
+<img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night.gif" alt="The station at night" width="400">
 
 ### Departures and arrivals
 
