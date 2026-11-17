@@ -4,7 +4,7 @@
 
 ### Fixes
 - **Uniform header height**: the illustrated header is now 90 px high on both cards (was 112 px on the full card and 100 px on the mini card), the same height as the other illustrated cards, so that headers line up on a dashboard.
-- **Track across the whole card**: the rail, sleepers and ballast now run under the full width of the header, edge to edge, instead of stopping under the station; the train still rides on the same rail.
+- **Track across the whole card**: the rail, sleepers and ballast now run under the full width of the header, edge to edge, instead of stopping under the station, as a 10 px strip (rail, sleepers, ballast) of the same thickness as the ground strip of the other cards; the train still rides on the rail.
 
 ## 1.3.0 - 2026-11-15
 

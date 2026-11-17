@@ -108,15 +108,16 @@ const TB_SCENE_STYLE = `
   .night .tb-plat { fill: #4b5462; } .night .tb-plat-top { fill: #5f6977; } .night .tb-safety { fill: #c9a400; }
   .tb-lamphead { fill: #4b5764; } .tb-halo { display: none; }
   .night .tb-halo { display: inline; } .night .tb-lamphead { fill: #ffd27a; }
-  /* The track runs under the whole banner, edge to edge, in the scene's units (1u = banner height / 78): rail at
-     y 72.6, sleepers every 9u at y 74.6, ballast from y 75.6. The train rides on it from the SVG above. */
-  .tb-track { --u: calc(var(--tb-banner-h, 90px) / 78); --rail: #7d8894; --sleeper: #8b6c4d; --ballast: #c3b39d;
-              position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--u) * 5.4);
+  /* The track is a 10 px strip under the whole banner, edge to edge, like the ground strip of the other
+     illustrated cards: rail on top, sleepers every 10 px, ballast below. The scene is lifted so that the train's
+     wheels (y 73.2 of 78) sit on the rail. */
+  .tb-track { --rail: #7d8894; --sleeper: #8b6c4d; --ballast: #c3b39d;
+              position: absolute; left: 0; right: 0; bottom: 0; height: var(--tb-track-h, 10px);
               background:
-                linear-gradient(var(--rail), var(--rail)) 0 0 / 100% calc(var(--u) * 1.3) no-repeat,
-                repeating-linear-gradient(270deg, var(--sleeper) 0 calc(var(--u) * 4.6), transparent 0 calc(var(--u) * 9))
-                  0 calc(var(--u) * 2) / 100% calc(var(--u) * 1.6) no-repeat,
-                linear-gradient(var(--ballast), var(--ballast)) 0 100% / 100% calc(var(--u) * 2.4) no-repeat; }
+                linear-gradient(var(--rail), var(--rail)) 0 0 / 100% 2px no-repeat,
+                repeating-linear-gradient(270deg, var(--sleeper) 0 5px, transparent 0 10px) 0 3px / 100% 3px no-repeat,
+                var(--ballast); }
+  .banner .tb-scene { bottom: calc(var(--tb-track-h, 10px) - var(--tb-banner-h, 90px) * 5.4 / 78); }
   .night .tb-track { --rail: #9aa5b2; --sleeper: #4a3d33; --ballast: #2b3341; }
   .tb-body { fill: #f8fafc; stroke: #c3ccd6; stroke-width: .5; } .night .tb-body { fill: #e3e8ee; }
   .tb-stripe { fill: #2f6fde; } .tb-fillet { fill: #f28c28; }
