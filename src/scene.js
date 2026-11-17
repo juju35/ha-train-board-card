@@ -37,13 +37,12 @@ const tbTrainSvg = (uid) => `<g class="tb-train">
 
 // The whole banner picture. `uid` keeps the ids of each card's gradients apart on a page with several cards.
 const tbSceneSvg = (uid) => {
-  const sleepers = Array.from({ length: 20 }, (_, i) => `<rect x="${150 + i * 9}" y="74.6" width="4.6" height="1.6" rx=".3"/>`).join("");
   const stars = TB_STARS.map(([x, y, r], i) => `<circle class="tb-star${i % 3 ? "" : " tw"}" cx="${x}" cy="${y}" r="${r}"/>`).join("");
   const windows = [246, 265, 284].map((x) => `<path class="tb-win" d="M${x} 56V47.5a4.5 4.5 0 0 1 9 0V56Z"/>`).join("");
   const lamp = (x) =>
     `<g class="tb-lampost"><circle class="tb-halo" cx="${x}" cy="44" r="7" fill="url(#tb-halo-${uid})"/><rect class="tb-pole" x="${x - 0.6}" y="44" width="1.2" height="14"/><rect class="tb-lamphead" x="${x - 2}" y="42.6" width="4" height="1.8" rx=".8"/></g>`;
   const pole = (x) => `<rect class="tb-pole" x="${x - 0.8}" y="37" width="1.6" height="37"/><path class="tb-arm" d="M${x} 39.5H${x + 7}V45.6"/>`;
-  return `<svg class="tb-scene" viewBox="0 0 320 78" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">
+  return `<div class="tb-track" aria-hidden="true"></div><svg class="tb-scene" viewBox="0 0 320 78" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">
     <defs>
       <linearGradient id="tb-fade-${uid}" gradientUnits="userSpaceOnUse" x1="150" y1="0" x2="184" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>
       <mask id="tb-mask-${uid}" maskUnits="userSpaceOnUse" x="0" y="0" width="320" height="78"><rect x="0" y="0" width="320" height="78" fill="url(#tb-fade-${uid})"/></mask>
@@ -69,9 +68,6 @@ const tbSceneSvg = (uid) => {
     <rect class="tb-plat" x="160" y="58" width="160" height="9"/><rect class="tb-plat-top" x="160" y="58" width="160" height="1.4"/><rect class="tb-safety" x="160" y="60" width="160" height=".9"/>
     ${lamp(196)}${lamp(314)}
     <g mask="url(#tb-mask-${uid})">
-      <rect class="tb-ballast" x="150" y="75.6" width="170" height="2.4"/>
-      <g class="tb-sleepers">${sleepers}</g>
-      <rect class="tb-rail" x="150" y="72.6" width="170" height="1.3"/>
       <g class="tb-move"><g transform="translate(180 52.2)">${tbTrainSvg(uid)}</g></g>
     </g>
   </svg>`;
@@ -81,7 +77,7 @@ const tbSceneSvg = (uid) => {
 // right (departures), or comes in from the left and stops (arrivals): each tab has its own keyframes, so that the
 // animation starts over when the tab changes.
 const TB_SCENE_STYLE = `
-  .banner { position: relative; overflow: hidden; height: var(--tb-banner-h, 112px); color: #10283f;
+  .banner { position: relative; overflow: hidden; height: var(--tb-banner-h, 90px); color: #10283f;
             background: linear-gradient(90deg, #f3f9ff 0%, #e2f0fc 38%, #c4e1f7 100%); }
   .banner.night { color: #fff; background: linear-gradient(90deg, #2c4068 0%, #1b2b4e 42%, #0f1a34 100%); }
   .tb-scene { position: absolute; right: 0; bottom: 0; width: 100%; height: 100%; overflow: hidden; }
@@ -112,8 +108,17 @@ const TB_SCENE_STYLE = `
   .night .tb-plat { fill: #4b5462; } .night .tb-plat-top { fill: #5f6977; } .night .tb-safety { fill: #c9a400; }
   .tb-lamphead { fill: #4b5764; } .tb-halo { display: none; }
   .night .tb-halo { display: inline; } .night .tb-lamphead { fill: #ffd27a; }
-  .tb-rail { fill: #7d8894; } .tb-sleepers { fill: #8b6c4d; } .tb-ballast { fill: #c3b39d; }
-  .night .tb-rail { fill: #9aa5b2; } .night .tb-sleepers { fill: #4a3d33; } .night .tb-ballast { fill: #2b3341; }
+  /* The track is a 10 px strip under the whole banner, edge to edge, like the ground strip of the other
+     illustrated cards: rail on top, sleepers every 10 px, ballast below. The scene is lifted so that the train's
+     wheels (y 73.2 of 78) sit on the rail. */
+  .tb-track { --rail: #7d8894; --sleeper: #8b6c4d; --ballast: #c3b39d;
+              position: absolute; left: 0; right: 0; bottom: 0; height: var(--tb-track-h, 10px);
+              background:
+                linear-gradient(var(--rail), var(--rail)) 0 0 / 100% 2px no-repeat,
+                repeating-linear-gradient(270deg, var(--sleeper) 0 5px, transparent 0 10px) 0 3px / 100% 3px no-repeat,
+                var(--ballast); }
+  .banner .tb-scene { bottom: calc(var(--tb-track-h, 10px) - var(--tb-banner-h, 90px) * 5.4 / 78); }
+  .night .tb-track { --rail: #9aa5b2; --sleeper: #4a3d33; --ballast: #2b3341; }
   .tb-body { fill: #f8fafc; stroke: #c3ccd6; stroke-width: .5; } .night .tb-body { fill: #e3e8ee; }
   .tb-stripe { fill: #2f6fde; } .tb-fillet { fill: #f28c28; }
   .tb-glass { fill: #26323f; } .night .tb-glass { fill: #3a4d63; }
