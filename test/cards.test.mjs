@@ -187,14 +187,17 @@ test("illustration: false gives the classic header (round tinted icon), on both 
   assert.match(mini, /class="logo (ok|warn|danger|na)"/);
 });
 
-test("night picture: the sun below the horizon or the dark theme; illustration_theme forces it", () => {
+test("night picture: the dark theme alone (a light theme keeps the day after sunset); illustration_theme forces it", () => {
   const h = fx.dbInfoscreen();
   assert.equal(tb.tbIsNight(h, {}), false);
   h.states["sun.sun"] = { entity_id: "sun.sun", state: "above_horizon", attributes: {} };
   assert.equal(tb.tbIsNight(h, {}), false);
   h.states["sun.sun"].state = "below_horizon";
+  assert.equal(tb.tbIsNight(h, {}), false);
+  h.themes.darkMode = true;
   assert.equal(tb.tbIsNight(h, {}), true);
   assert.equal(tb.tbIsNight(h, { illustration_theme: "day" }), false);
+  h.themes.darkMode = false;
   h.states["sun.sun"].state = "above_horizon";
   assert.equal(tb.tbIsNight(h, { illustration_theme: "night" }), true);
   delete h.states["sun.sun"];

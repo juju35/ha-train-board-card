@@ -189,13 +189,13 @@ const tbColor = (config, t) => {
 };
 const tbSafeColor = (c) => (/^(#[0-9a-f]{3,8}|var\(--[\w-]+\)|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%deg]+\)|[a-z]+)$/i.test(String(c)) ? c : "var(--tb-muted)");
 
-// Night picture: forced by illustration_theme, else the sun below the horizon or Home Assistant's dark mode (a dark
-// dashboard by day gets the night picture too).
+// Night picture: forced by illustration_theme, else Home Assistant's dark mode alone (a light theme keeps the day
+// picture after sunset).
 const tbIsNight = (hass, config) => {
   const theme = tbOpt(config, "illustration_theme");
   if (theme === "night") return true;
   if (theme === "day") return false;
-  return hass?.states?.["sun.sun"]?.state === "below_horizon" || !!hass?.themes?.darkMode;
+  return !!hass?.themes?.darkMode;
 };
 
 // The status of the trains listed on a tab, for the header's pill and icon: a cancelled train is a disruption,
@@ -605,11 +605,11 @@ class TbBase extends HTMLElement {
   }
 
   // What the render depends on: the entities shown (and the siblings of the integrations spread over several
-  // sensors), the sun, the language and dark mode, and the clock to the half minute.
+  // sensors), the language and dark mode, and the clock to the half minute.
   _signature() {
     const h = this._hass;
     const c = this._config;
-    const sig = [h.language, h.locale, h.themes?.darkMode, h.entities, h.states["sun.sun"], Math.floor(Date.now() / 30000)];
+    const sig = [h.language, h.locale, h.themes?.darkMode, h.entities, Math.floor(Date.now() / 30000)];
     for (const id of [c.entity, c.arrival_entity]) {
       if (!id) continue;
       sig.push(h.states[id]);
