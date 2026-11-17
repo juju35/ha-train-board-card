@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { after, before, test } from "node:test";
 import { withLogos } from "../scripts/brand-logos.mjs";
 import { SOURCES } from "../scripts/sources.mjs";
+import { CLOCK } from "../scripts/screenshots/harness.mjs";
 import { ARRIVALS_ENTITY, boardHass, ENTITY } from "../scripts/screenshots/mock.mjs";
 
 const root = new URL("../", import.meta.url).pathname;
@@ -36,6 +37,8 @@ const measure = async (cases) => {
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  // The mock board's clock: its trains are still to come.
+  await page.clock.setFixedTime(new Date(CLOCK));
   await page.setContent("<!doctype html><body style='margin:0;font-family:Roboto,Arial,sans-serif'></body>");
   await page.addScriptTag({ content: HA_CARD });
   await page.addScriptTag({ content: src });
@@ -51,11 +54,32 @@ const measure = async (cases) => {
         el.hass = { ...hass, themes: { darkMode: c.theme === "dark" } };
         box.appendChild(el);
         if (c.tab) el.shadowRoot.querySelector(`[data-tab="${c.tab}"]`).click();
+        if (c.zoom) el.shadowRoot.querySelector(".zoom").dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true, detail: 1 }));
         const sr = el.shadowRoot;
         const card = sr.querySelector("ha-card").getBoundingClientRect();
         const svg = sr.querySelector(".tb-scene");
         const text = sr.querySelector(".htext");
         const res = { name: JSON.stringify(c), overflow: [] };
+        // The header's status pill shown (one of the mini card's pair is hidden): its label whole, or the dot alone
+        // on purpose; on the title row or under it; its share of the title block; the title still readable.
+        const rect = (n) => n.getBoundingClientRect();
+        const pill = [...sr.querySelectorAll(".htext .hpill, .header .hpill")].find((n) => n.getClientRects().length > 0);
+        if (pill) {
+          const txt = pill.querySelector(".txt");
+          const block = pill.closest(".titles");
+          const title = block.querySelector(".name, .nt-time b");
+          const mid = (n) => (rect(n).top + rect(n).bottom) / 2;
+          res.pill = {
+            cut: txt.scrollWidth > txt.clientWidth + 0.5,
+            dotOnly: getComputedStyle(txt).position === "absolute",
+            inside: rect(pill).right <= rect(block).right + 0.5 && rect(pill).bottom <= card.bottom,
+            onTitleRow: Math.abs(mid(pill) - mid(title)) < 4,
+            share: rect(pill).width / rect(block).width,
+            label: pill.getAttribute("title"),
+            titleWidth: rect(title).width,
+            ch: parseFloat(getComputedStyle(title).fontSize) * 2,
+          };
+        }
         // The round icon of the header: 40 px on both cards, its badge inside the banner.
         const logo = sr.querySelector(".htext .logo");
         if (logo) {
@@ -126,4 +150,59 @@ test("a narrow card keeps the sky alone: no scene beside text that would not fit
   if (skip) return t.skip(skip);
   const [r] = await measure([{ type: "train-board-mini-card", width: 280, lang: "en", theme: "light" }]);
   assert.equal(r.sceneLeft, undefined);
+});
+
+test("every header has its status pill: whole label from 245 px, on the title row when it fits, the dot alone at 200 px", async (t) => {
+  if (skip) return t.skip(skip);
+  const all = [];
+  for (const lang of ["en", "fr", "de", "el", "ru", "pl"])
+    for (const theme of ["light", "dark"]) {
+      for (const width of [200, 245, 300, 380, 460, 500]) {
+        all.push({ type: "train-board-card", width, lang, theme });
+        all.push({ type: "train-board-card", width, lang, theme, config: { illustration: false } });
+        all.push({ type: "train-board-mini-card", width, lang, theme });
+        all.push({ type: "train-board-mini-card", width, lang, theme, config: { illustration: false } });
+        all.push({ type: "train-board-mini-card", width, lang, theme, zoom: true });
+        // No train to show: the station and the board's pill.
+        all.push({ type: "train-board-mini-card", width, lang, theme, config: { platforms: "99" } });
+      }
+    }
+  for (const r of await measure(all)) {
+    const c = JSON.parse(r.name);
+    assert.ok(r.pill, `no status pill: ${r.name}`);
+    assert.ok(r.pill.inside, `pill outside its block: ${r.name}`);
+    assert.ok(r.pill.titleWidth >= r.pill.ch, `title ${r.pill.titleWidth} px: ${r.name}`);
+    if (c.width <= 200) assert.ok(r.pill.dotOnly, `the dot alone: ${r.name}`);
+    else {
+      assert.ok(!r.pill.dotOnly && !r.pill.cut, `pill « ${r.pill.label} » cut: ${r.name}`);
+      if (r.pill.onTitleRow && c.type === "train-board-card") assert.ok(r.pill.share <= 0.53, `pill ${(r.pill.share * 100).toFixed(0)} % of the title block: ${r.name}`);
+    }
+  }
+});
+
+test("the mini card's detail button sits in the banner's top right corner: 24 px, 5 px from its edges", async (t) => {
+  if (skip) return t.skip(skip);
+  const page = await browser.newPage({ viewport: { width: 1000, height: 600 } });
+  await page.setContent("<!doctype html><body style='margin:0'></body>");
+  await page.addScriptTag({ content: HA_CARD });
+  await page.addScriptTag({ content: src });
+  const hass = boardHass();
+  for (const zoom of [false, true]) {
+    const r = await page.evaluate(
+      ({ hass, ENTITY, zoom }) => {
+        document.body.innerHTML = "<div style='width:380px'></div>";
+        const el = document.createElement("train-board-mini-card");
+        el.setConfig({ type: "custom:train-board-mini-card", entity: ENTITY });
+        el.hass = hass;
+        document.body.firstChild.appendChild(el);
+        if (zoom) el.shadowRoot.querySelector(".zoom").dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true, detail: 1 }));
+        const b = el.shadowRoot.querySelector(".zoom").getBoundingClientRect();
+        const banner = el.shadowRoot.querySelector(".banner").getBoundingClientRect();
+        return [Math.round(b.width), Math.round(b.height), Math.round(b.top - banner.top), Math.round(banner.right - b.right)];
+      },
+      { hass, ENTITY, zoom },
+    );
+    assert.deepEqual(r, [24, 24, 5, 5], `zoomed: ${zoom}`);
+  }
+  await page.close();
 });

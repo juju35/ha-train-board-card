@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0 - 2026-11-17
+
+### Features
+- **Status pill in the header** of both cards, full and mini, compact and unfolded, illustrated or classic: a coloured dot and a short status right after the title, in the colour of the header icon, which now follows the status too — **On time** (green), **Delays** (orange) or **Disruption** (red, a cancelled train) among the trains listed, **Scheduled** (grey, trains known from the timetable only) or **No trains**. When the title lacks room (beside the scenery, or on a card of about 260 px or less) the pill goes to its own line under the statistics; at 200 px or less only its dot shows, the label kept in its tooltip and for screen readers. The pill uses the banner's frosted style. New texts translated into every language.
+- **Mini card**: the next train's status pill now sits right after its time, and the header icon takes its colour; beside the scenery, where the time row lacks room, the pill takes the last row, « in 8 min » the time row and the platform the start of the train's row. With no train to show, the station's name and the board's pill (« No trains ») take its place.
+- **Mini card detail button** aligned with the other cards: 24 px round frosted button, 5 px from the banner's top right corner (was 28 px, 6 px), in the unfolded view too; without the illustration it sits in the header's top right corner instead of the middle of the title row.
+- With both tabs shown, the header statistics no longer repeat the board's name (« Departures »), already shown by the active tab right under the header; a statistic too long for a narrow header ends with an ellipsis instead of running under the scenery.
+
+### Fixes
+- **Night picture with a dark theme by day**: with `illustration_theme: auto` (the default), the night picture now shows when the sun is below the horizon **or** Home Assistant uses a dark theme, like the other cards; a dark dashboard by day used to keep the day sky. `day` and `night` still force it.
+
 ## 1.3.1 - 2026-11-17
 
 ### Fixes

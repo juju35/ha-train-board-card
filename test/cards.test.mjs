@@ -37,7 +37,8 @@ test("the full board: banner, both tabs, rows with type, destination, number, pl
   assert.match(h, /<svg class="tb-scene"/);
   assert.match(h, /data-tab="departures"[^>]*>Departures/);
   assert.match(h, /data-tab="arrivals"[^>]*>Arrivals/);
-  assert.equal(stats(card), "Departures 3 trains 33 % on time".replace(/ %/, "%").replace("33%", "33%"));
+  // The tabs right under the header name the board: the statistics do not repeat it.
+  assert.equal(stats(card), "3 trains 33% on time");
   const rows = h.match(/<div class="row"[\s\S]*?<\/div>/g);
   assert.equal(rows.length, 3);
   assert.match(text(rows[0]), /^08:12 ICE Hamburg-Altona 578 6 \+4 min$/);
@@ -56,7 +57,7 @@ test("the Arrivals tab: its own statistics, « from » the origin, the arrival a
   const h = html(card);
   assert.match(h, /<div class="banner arr">/);
   assert.match(h, /class="tab active"[^>]*data-tab="arrivals"/);
-  assert.equal(stats(card), "Arrivals 1 train 0% on time");
+  assert.equal(stats(card), "1 train 0% on time");
   assert.match(text(h), /08:06 ICE from Amsterdam Centraal 105 5 \+7 min/);
   // default_tab picks it from the start.
   assert.match(html(mount("train-board-card", { entity: DEP, arrival_entity: ARR, default_tab: "arrivals" })), /banner arr/);
@@ -149,9 +150,14 @@ test("the mini card: the next train on the banner, the detail button unfolds the
   const card = mount("train-board-mini-card", { entity: DEP, arrival_entity: ARR });
   let h = html(card);
   assert.doesNotMatch(h, /class="list/);
-  assert.match(text(h), /^08:12 in 16 min ICE Hamburg-Altona 6 \+4 min$/);
+  // The pill, « in 16 min » and the platform are each written twice, placed as room allows (the styles hide one
+  // of each pair).
+  assert.match(text(h), /^08:12 \+4 min in 16 min 6 ICE Hamburg-Altona 6 in 16 min \+4 min$/);
+  // The status pill right after the time, the header icon in its colour.
+  assert.match(h, /<div class="nt-time"><b class="">08:12<\/b><span class="wide"><span class="chip hpill warn" title="\+4 min"><span class="dot"><\/span>/);
+  assert.match(h, /<div class="nt-meta"><span class="wide"><span class="plat changed">6<\/span><\/span><span class="wide"><span class="rel">in 16 min<\/span><\/span><span class="narrow"><span class="chip hpill warn"/);
   // The round icon (with the station's name in its tooltip) beside the next train, same size as on the full card.
-  assert.match(h, /<div class="htext"><div class="logo" title="Köln Hbf"><svg class="icon /);
+  assert.match(h, /<div class="htext zoomed"><div class="logo warn" title="Köln Hbf"><svg class="icon /);
   assert.match(h, /class="iconbtn zoom" data-action="zoom"[^>]*aria-expanded="false"/);
   assert.deepEqual({ ...card.getGridOptions() }, { columns: 6, min_columns: 6 });
   click(card, { action: "zoom" });
@@ -174,20 +180,25 @@ test("the mini card: the next train on the banner, the detail button unfolds the
 test("illustration: false gives the classic header (round tinted icon), on both cards", () => {
   const full = html(mount("train-board-card", { entity: DEP, illustration: false }));
   assert.doesNotMatch(full, /<svg class="tb-scene"|<div class="banner/);
-  assert.match(full, /<div class="header"><div class="logo">/);
+  assert.match(full, /<div class="header"><div class="logo (ok|warn|danger|na)">/);
+  assert.match(full, /<div class="trow"><div class="name">Köln Hbf<\/div><span class="chip hpill/);
   const mini = html(mount("train-board-mini-card", { entity: DEP, illustration: false }));
   assert.match(mini, /<div class="next">/);
-  assert.match(mini, /class="logo"/);
+  assert.match(mini, /class="logo (ok|warn|danger|na)"/);
 });
 
-test("night picture: the sun below the horizon, else the dark theme; illustration_theme forces it", () => {
+test("night picture: the sun below the horizon or the dark theme; illustration_theme forces it", () => {
   const h = fx.dbInfoscreen();
   assert.equal(tb.tbIsNight(h, {}), false);
-  h.themes.darkMode = true;
-  assert.equal(tb.tbIsNight(h, {}), true);
   h.states["sun.sun"] = { entity_id: "sun.sun", state: "above_horizon", attributes: {} };
   assert.equal(tb.tbIsNight(h, {}), false);
   h.states["sun.sun"].state = "below_horizon";
+  assert.equal(tb.tbIsNight(h, {}), true);
+  assert.equal(tb.tbIsNight(h, { illustration_theme: "day" }), false);
+  h.states["sun.sun"].state = "above_horizon";
+  assert.equal(tb.tbIsNight(h, { illustration_theme: "night" }), true);
+  delete h.states["sun.sun"];
+  h.themes.darkMode = true;
   assert.equal(tb.tbIsNight(h, {}), true);
   assert.equal(tb.tbIsNight(h, { illustration_theme: "day" }), false);
   assert.match(html(mount("train-board-card", { entity: DEP, illustration_theme: "night" })), /class="banner dep night"/);
@@ -206,7 +217,7 @@ test("languages: French board, plural forms, 24 h times", () => {
   h.language = "fr";
   h.locale = { ...h.locale, language: "fr" };
   const card = mount("train-board-card", { entity: DEP, arrival_entity: ARR }, h);
-  assert.equal(stats(card), "Départs 3 trains 33 % à l’heure");
+  assert.equal(stats(card), "3 trains 33 % à l’heure");
   assert.match(text(html(card)), /Supprimé/);
   assert.equal(tb.tbPlural(h, { language: "pl" }, "trains", 5), "5 pociągów");
   assert.equal(tb.tbPlural(h, { language: "pl" }, "trains", 3), "3 pociągi");
@@ -253,7 +264,10 @@ test("brand badge: the operator of the integration on the header icon, only when
   const badge = (h) => h.match(/<span class="badge" title="([^"]*)"><img src="data:image\/(svg\+xml|png)/);
   assert.equal(badge(html(mount("train-board-card", { entity: DEP })))[1], "DB Infoscreen");
   // The illustrated header: the round tinted icon, its badge at the bottom right, then the title and the statistics.
-  assert.match(html(mount("train-board-card", { entity: DEP })), /<div class="htext"><div class="logo" title="Köln Hbf"><svg[\s\S]*?<\/svg><span class="badge"[\s\S]*?<\/span><\/div><div class="titles"><div class="name">Köln Hbf<\/div><div class="stats">/);
+  assert.match(
+    html(mount("train-board-card", { entity: DEP })),
+    /<div class="htext"><div class="logo \w+" title="Köln Hbf"><svg[\s\S]*?<\/svg><span class="badge"[\s\S]*?<\/span><\/div><div class="titles"><div class="trow"><div class="name">Köln Hbf<\/div><span class="chip hpill[^>]*><span class="dot"><\/span><span class="txt">[^<]+<\/span><\/span><\/div><div class="stats">/,
+  );
   assert.equal(badge(html(mount("train-board-card", { entity: DEP, illustration: false })))[1], "DB Infoscreen");
   assert.equal(badge(html(mount("train-board-mini-card", { entity: DEP })))[1], "DB Infoscreen");
   assert.ok(badge(html(mount("train-board-card", { entity: "sensor.train_schedule_wyb_wat" }, fx.nationalRailUk()))));
@@ -290,4 +304,32 @@ test("brand badge: the operator of the integration on the header icon, only when
     uk_transport: "nationalrail",
     train_traveler: "sncf",
   });
+});
+
+test("a dark theme while the sun is up shows the night picture", () => {
+  const h = fx.dbInfoscreen();
+  h.states["sun.sun"] = { entity_id: "sun.sun", state: "above_horizon", attributes: {} };
+  h.themes = { darkMode: true };
+  assert.equal(tb.tbIsNight(h, {}), true);
+  assert.match(html(mount("train-board-card", { entity: DEP }, h)), /class="banner dep night"/);
+  assert.match(html(mount("train-board-mini-card", { entity: DEP }, h)), /class="banner dep night"/);
+});
+
+test("the header's status pill: a cancelled train is a disruption, else delays, else on time; grey without real-time or trains", () => {
+  const now = NOW;
+  const tab = (trains) => ({ kind: "departure", trains });
+  const train = (o) => ({ realtime: true, cancelled: false, delayedUnknown: false, delay: 0, scheduled: now + 20 * 60000, expected: null, ...o });
+  const st = (trains, config = {}) => tb.tbBoardStatus(fx.dbInfoscreen(), config, tab(trains), now);
+  assert.deepEqual({ ...st([train({})]) }, { cls: "ok", key: "on_time" });
+  assert.deepEqual({ ...st([train({}), train({ delay: 5 })]) }, { cls: "warn", key: "delays" });
+  assert.deepEqual({ ...st([train({ delay: 5 }), train({ cancelled: true })]) }, { cls: "danger", key: "disruption" });
+  // Only the trains listed count (max_trains).
+  assert.deepEqual({ ...st([train({}), train({ cancelled: true })], { max_trains: 1 }) }, { cls: "ok", key: "on_time" });
+  assert.deepEqual({ ...st([train({ realtime: false })]) }, { cls: "na", key: "scheduled" });
+  assert.deepEqual({ ...st([]) }, { cls: "na", key: "no_trains_short" });
+  // On the card: the pill on the title row and the icon in the same colour, translated.
+  const h = html(mount("train-board-card", { entity: DEP, language: "fr" }));
+  const [, cls, label] = h.match(/<div class="trow"><div class="name">[^<]*<\/div><span class="chip hpill (\w+)" title="([^"]+)">/);
+  assert.match(h, new RegExp(`<div class="logo ${cls}"`));
+  assert.ok(["À l’heure", "Retards", "Perturbations", "Prévu", "Aucun train"].includes(label), label);
 });
