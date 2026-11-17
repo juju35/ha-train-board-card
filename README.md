@@ -33,11 +33,11 @@ The cards read the sensors of **twelve integrations** — [DB Infoscreen](https:
 | Departures | Arrivals |
 |---|---|
 | <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/card-dark.png"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/card.png" alt="Train board card, departures" width="400"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/card-arrivals-dark.png"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/card-arrivals.png" alt="Train board card, arrivals" width="400"></picture> |
-| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure.gif" alt="The train leaves the platform" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival.gif" alt="The train comes in and stops" width="400"> |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure-dark.gif"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure.gif" alt="The train leaves the platform" width="400"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival-dark.gif"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival.gif" alt="The train comes in and stops" width="400"></picture> |
 
 | Mini card | At night |
 |---|---|
-| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card-dark.png"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card.png" alt="Train board mini card" width="400"></picture> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night.gif" alt="The station at night" width="400"> |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card-dark.png"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card.png" alt="Train board mini card" width="400"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night-dark.gif"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night.gif" alt="The station at night" width="400"></picture> |
 
 ## Features
 
@@ -278,6 +278,16 @@ entity: sensor.train_traveler_ren_nan_journeys
 
 ## Screenshots
 
+### Animations
+
+With `illustration_theme: auto`, the light theme shows the day picture and the dark theme the night picture; the last row forces `illustration_theme: night`.
+
+| Light | Dark |
+|---|---|
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure.gif" alt="The train leaves the platform, light" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure-dark.gif" alt="The train leaves the platform, dark" width="400"> |
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival.gif" alt="The train comes in and stops, light" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival-dark.gif" alt="The train comes in and stops, dark" width="400"> |
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night.gif" alt="The station at night, light" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night-dark.gif" alt="The station at night, dark" width="400"> |
+
 ### Departures and arrivals
 
 | Light | Dark |
@@ -297,8 +307,7 @@ entity: sensor.train_traveler_ren_nan_journeys
 |---|---|
 | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card.png" alt="Mini card, light" width="380"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card-dark.png" alt="Mini card, dark" width="380"> |
 | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card-zoom.png" alt="Mini card unfolded, light" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card-zoom-dark.png" alt="Mini card unfolded, dark" width="400"> |
-
-<img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini.gif" alt="The mini card's animation" width="380">
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini.gif" alt="The mini card's animation, light" width="380"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-dark.gif" alt="The mini card's animation, dark" width="380"> |
 
 ### Classic header and an integration without train types
 

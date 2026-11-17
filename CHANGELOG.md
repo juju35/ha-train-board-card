@@ -11,6 +11,9 @@
 ### Fixes
 - **Night picture with a dark theme by day**: with `illustration_theme: auto` (the default), the night picture now shows when the sun is below the horizon **or** Home Assistant uses a dark theme, like the other cards; a dark dashboard by day used to keep the day sky. `day` and `night` still force it.
 
+### Maintenance
+- README: every animation now has a dark twin (`*-dark.gif`), in a new Animations table; with `illustration_theme: auto` the dark captures show the night picture.
+
 ## 1.3.1 - 2026-11-17
 
 ### Fixes

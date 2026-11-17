@@ -4,8 +4,8 @@ import { pair, shoot } from "./harness.mjs";
 import { ARRIVALS_ENTITY, boardHass, ENTITY, UK_ENTITY, ukHass } from "./mock.mjs";
 
 const board = { entity: ENTITY, arrival_entity: ARRIVALS_ENTITY };
-// Light theme: day picture; dark theme: night picture. The harness passes Home Assistant's dark mode with the dark
-// theme (which `illustration_theme: auto` follows too), and each shot forces its picture so that it never depends on it.
+// Every shot keeps `illustration_theme: auto`: the harness passes Home Assistant's dark mode with the dark theme, so the
+// light shot shows the day picture and its dark twin the night picture (dark theme rule), as on a real dashboard.
 const SHOTS = {
   card: { tag: "train-board-card", config: board },
   "card-arrivals": { tag: "train-board-card", config: board, open: '[data-tab="arrivals"]' },
@@ -20,7 +20,6 @@ await shoot({
   shots: Object.entries(SHOTS).flatMap(([file, s]) => pair(file, { width: s.width })),
   setup: (s) => {
     const shot = SHOTS[s.file.replace(/-dark$/, "")];
-    const scene = { illustration_theme: s.theme === "dark" ? "night" : "day" };
-    return { tag: shot.tag, hass: shot.hass ?? boardHass(), config: { ...scene, ...shot.config }, open: shot.open };
+    return { tag: shot.tag, hass: shot.hass ?? boardHass(), config: shot.config, open: shot.open };
   },
 });
