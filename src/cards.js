@@ -248,14 +248,11 @@ const tbPatchChildren = (cur, next) => {
   });
   while (cur.childNodes.length > fresh.length) cur.removeChild(cur.lastChild);
 };
-// The width of an element's first four characters and an ellipsis, in its own font: the least a cut title keeps.
-let tbFourCtx;
-const tbFourChars = (el) => {
-  const cs = getComputedStyle(el);
-  tbFourCtx ??= document.createElement("canvas").getContext?.("2d");
-  if (!tbFourCtx) return 0;
-  tbFourCtx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-  return tbFourCtx.measureText(`${[...el.textContent.trim()].slice(0, 4).join("")}\u2026`).width;
+// The width of an element's whole text in fractional pixels, even while an ellipsis cuts it.
+const tbTextWidth = (el) => {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  return range.getBoundingClientRect().width || el.scrollWidth;
 };
 
 const tbMorph = (root, html) => {
@@ -364,17 +361,21 @@ const TB_BANNER_STYLE = `
            box-shadow: 0 0 0 1px var(--divider-color, rgba(0,0,0,.12)), 0 0 0 3px var(--card-background-color, #fff); }
   .badge img { width: 100%; height: 100%; object-fit: contain; }
   .htext .name { font-size: 16px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  /* The title row: the title, then the status pill right after it with its whole label; the title gives way first,
-     down to 4 characters. */
+  /* The title row: the title, then the status pill right after it with its whole label (placed by _fitPill). */
   .trow { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .trow .name { flex: 0 1000 auto; min-width: 0; }
   .trow .hpill { flex: none; max-width: none; }
-  /* The header's text block is a container (narrow rules below). Not enough room beside the title for the whole pill
-     (measured by the card, see _fitPill): the pill goes to its own line, under the statistics. */
+  /* The header's text block is a container (narrow rules below). The whole title and the whole pill do not fit side
+     by side (measured by the card, see _fitPill): the pill goes to its own line, under the statistics kept to one
+     line; if that does not fit the banner either, the dot alone beside the title. */
   .htext, .header { container: tbhead / inline-size; }
   .titles.below > .trow { display: contents; }
   .titles.below > .trow .hpill { order: 3; align-self: flex-start; max-width: 100%; }
-  .titles.below > .stats { order: 2; }
+  .titles.below > .stats { order: 2; max-height: 16px; }
+  .titles.dot-only > .trow { display: flex; }
+  .titles.dot-only > .trow .hpill { order: 0; align-self: center; }
+  .titles.dot-only .hpill { padding: 0; background: none !important; overflow: visible; }
+  .titles.dot-only .hpill .txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   /* Very narrow: the dot alone, back on the title row (the label stays in its tooltip and for screen readers). */
   @container tbcard (max-width: 200px) {
     .titles.below > .trow { display: flex; }
@@ -635,24 +636,44 @@ class TbBase extends HTMLElement {
     this._fitPill();
   }
 
-  // The banner's status pill goes right after the title when its whole label fits there beside a title cut down to
-  // four characters; otherwise it takes a line of its own under the subtitle (.titles.below). Measured (in fractional
-  // pixels), so that a short title keeps its pill beside it whatever room the picture leaves.
+  // The header's status pill goes right after the title (the mini card: the time), on its row, only while the title
+  // stays whole and the pill's whole label fits beside it; otherwise it takes a line of its own under the subtitle
+  // (.below), the title whole on its row (cut only when it does not fit alone). There, in the banner, the statistics
+  // keep one line; if the text still does not fit above the track strip, the pill keeps its dot alone (.dot-only, its
+  // label in its tooltip and for screen readers). Measured after each render and on each new width, whatever the
+  // language: no fixed width threshold.
   _fitPill() {
+    if (!this.isConnected) return;
     for (const t of this.shadowRoot?.querySelectorAll?.(".titles") || []) {
       // The full card's title row, else the mini card's time row (its pill in the « wide » span).
       const chip = t.querySelector(".trow > .chip, .nt-time > .wide > .chip");
       if (!chip?.getBoundingClientRect) continue;
-      t.classList.remove("below");
+      t.classList.remove("below", "dot-only");
       const row = chip.closest(".trow, .nt-time");
       const name = row.firstElementChild;
       const shown = name && name !== chip && getComputedStyle(name).display !== "none";
       const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
-      // The clock keeps its width; a title is cut down to four characters.
-      const title = !shown
-        ? 0
-        : (name.matches(".name") ? Math.min(name.scrollWidth, Math.max(parseFloat(getComputedStyle(name).minWidth) || 0, tbFourChars(name))) : name.getBoundingClientRect().width) + gap;
-      if (title + chip.getBoundingClientRect().width > row.getBoundingClientRect().width + 0.5) t.classList.add("below");
+      // The clock keeps its width; a title counts whole.
+      const title = !shown ? 0 : (name.matches(".name") ? tbTextWidth(name) : name.getBoundingClientRect().width) + gap;
+      if (title + chip.getBoundingClientRect().width > t.getBoundingClientRect().width - 0.5) {
+        t.classList.add("below");
+        const banner = t.closest(".banner");
+        if (banner) {
+          const b = banner.getBoundingClientRect();
+          const track = parseFloat(getComputedStyle(banner).getPropertyValue("--tb-track-h")) || 10;
+          // Each element as it shows: its box cut by its ancestors that hide their overflow (a clamped line).
+          const out = [...t.querySelectorAll("*")].some((n) => {
+            let { top, bottom } = n.getBoundingClientRect();
+            for (let p = n.parentElement; p && p !== t; p = p.parentElement) {
+              if (getComputedStyle(p).overflowY === "visible") continue;
+              top = Math.max(top, p.getBoundingClientRect().top);
+              bottom = Math.min(bottom, p.getBoundingClientRect().bottom);
+            }
+            return bottom - top > 0.5 && (top < b.top - 0.5 || bottom > b.bottom - track + 0.5);
+          });
+          if (out) t.classList.add("dot-only");
+        }
+      }
     }
   }
 
