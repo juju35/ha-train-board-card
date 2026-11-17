@@ -189,14 +189,26 @@ const tbColor = (config, t) => {
 };
 const tbSafeColor = (c) => (/^(#[0-9a-f]{3,8}|var\(--[\w-]+\)|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%deg]+\)|[a-z]+)$/i.test(String(c)) ? c : "var(--tb-muted)");
 
-// Night picture: forced by illustration_theme, else the sun below the horizon, else Home Assistant's dark mode.
+// Night picture: forced by illustration_theme, else the sun below the horizon or Home Assistant's dark mode (a dark
+// dashboard by day gets the night picture too).
 const tbIsNight = (hass, config) => {
   const theme = tbOpt(config, "illustration_theme");
   if (theme === "night") return true;
   if (theme === "day") return false;
-  const sun = hass?.states?.["sun.sun"];
-  if (sun && !TB_NO_VALUE.has(String(sun.state))) return sun.state === "below_horizon";
-  return !!hass?.themes?.darkMode;
+  return hass?.states?.["sun.sun"]?.state === "below_horizon" || !!hass?.themes?.darkMode;
+};
+
+// The status of the trains listed on a tab, for the header's pill and icon: a cancelled train is a disruption,
+// else a delay, else on time; grey when no train is listed or none has real-time information.
+const tbBoardStatus = (hass, config, tab, now) => {
+  const max = Math.max(1, Math.min(30, Math.round(Number(tbOpt(config, "max_trains")) || 6)));
+  const trains = (tab?.trains || []).slice(0, max);
+  if (!trains.length) return { cls: "na", key: "no_trains_short" };
+  const cls = trains.map((t) => tbStatus(hass, config, t, tab.kind, now)?.cls);
+  if (cls.includes("danger")) return { cls: "danger", key: "disruption" };
+  if (cls.includes("warn")) return { cls: "warn", key: "delays" };
+  if (cls.some(Boolean)) return { cls: "ok", key: "on_time" };
+  return { cls: "na", key: "scheduled" };
 };
 
 // ---------------------------------------------------------------------------
@@ -236,6 +248,13 @@ const tbPatchChildren = (cur, next) => {
   });
   while (cur.childNodes.length > fresh.length) cur.removeChild(cur.lastChild);
 };
+// The width of an element's whole text in fractional pixels, even while an ellipsis cuts it.
+const tbTextWidth = (el) => {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  return range.getBoundingClientRect().width || el.scrollWidth;
+};
+
 const tbMorph = (root, html) => {
   if (typeof document === "undefined" || !document.createElement("template").content) {
     root.innerHTML = html;
@@ -290,7 +309,7 @@ const tbWatchOutside = (card, handler) => {
 const TB_BASE_STYLE = `
   :host { --tb-accent: #2f7de1; --tb-pro: #8a5cf6; --tb-ok: var(--success-color, #43a047); --tb-warn: var(--warning-color, #ffa600);
           --tb-danger: var(--error-color, #db4437); --tb-muted: var(--secondary-text-color, #727272); }
-  ha-card { overflow: hidden; position: relative; container-type: inline-size; }
+  ha-card { overflow: hidden; position: relative; container: tbcard / inline-size; }
   /* A size container has no width of its own: in a parent sized by its content the card keeps 400 px. */
   :host::before { content: ""; display: grid; grid-template-columns: minmax(0, 400px); height: 0; }
   .icon { width: 18px; height: 18px; fill: currentColor; flex: none; }
@@ -298,11 +317,16 @@ const TB_BASE_STYLE = `
   [role="button"], [role="tab"] { cursor: pointer; }
   [role="button"]:focus-visible, button:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
   .ok { --c: var(--tb-ok); } .warn { --c: var(--tb-warn); } .accent { --c: var(--tb-accent); } .danger { --c: var(--tb-danger); }
+  .na { --c: var(--tb-muted); }
   /* The state colour tints the pill; its text mixes it with the text colour to stay readable. */
   .chip { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; line-height: 18px;
           white-space: nowrap; max-width: 100%; box-sizing: border-box; overflow: hidden;
           background: color-mix(in srgb, var(--c) 16%, transparent); color: color-mix(in srgb, var(--c) 45%, var(--primary-text-color, #212121)); }
   .chip .txt { overflow: hidden; text-overflow: ellipsis; }
+  /* The header's status pill: a dot, then the status. */
+  .hpill { gap: 4px; line-height: 16px; min-width: 0; }
+  .hpill .txt { min-width: 0; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c); flex: none; }
   .type { flex: none; display: inline-flex; align-items: center; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 700;
           line-height: 18px; letter-spacing: .02em; white-space: nowrap; max-width: 6em; overflow: hidden; text-overflow: ellipsis;
           background: color-mix(in srgb, var(--c) 18%, transparent); color: color-mix(in srgb, var(--c) 55%, var(--primary-text-color, #212121)); }
@@ -323,11 +347,13 @@ const TB_BASE_STYLE = `
 const TB_BANNER_STYLE = `
   /* The round tinted icon (40 px, the brand badge at its bottom right), then the title and the statistics (the mini
      card: the next train), centred on the sky. */
-  .htext { position: absolute; left: 12px; top: 6px; bottom: 6px; right: calc(min(53.125cqw, var(--tb-scene-w)) + 4px);
+  .htext { position: absolute; left: 12px; top: 4px; bottom: calc(var(--tb-track-h, 10px) + 2px); right: calc(min(53.125cqw, var(--tb-scene-w)) + 4px);
            display: flex; align-items: center; gap: 10px; min-width: 0; }
   .htext .titles { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .banner .logo { color: var(--tb-accent); background: rgba(255,255,255,.62); box-shadow: inset 0 0 0 1px rgba(47,125,225,.18); }
-  .banner.night .logo { color: #9cc3ff; background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+  /* The header icon takes the status colour of the pill (--c of its ok / warn / danger / na class). */
+  .banner .logo { color: color-mix(in srgb, var(--c, var(--tb-accent)) 88%, #10283f); background: rgba(255,255,255,.62);
+                  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c, var(--tb-accent)) 22%, transparent); }
+  .banner.night .logo { color: color-mix(in srgb, var(--c, #9cc3ff) 70%, #ffffff); background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
   .banner .badge { box-shadow: 0 0 0 1px rgba(13,42,69,.16), 0 1px 3px rgba(13,42,69,.18); }
   /* Brand badge on the header icon: the logo on a white tile, readable on any theme. */
   .badge { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 5px; padding: 2px; box-sizing: border-box;
@@ -335,26 +361,58 @@ const TB_BANNER_STYLE = `
            box-shadow: 0 0 0 1px var(--divider-color, rgba(0,0,0,.12)), 0 0 0 3px var(--card-background-color, #fff); }
   .badge img { width: 100%; height: 100%; object-fit: contain; }
   .htext .name { font-size: 16px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  /* The title row: the title, then the status pill right after it with its whole label (placed by _fitPill). */
+  .trow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .trow .name { flex: 0 1000 auto; min-width: 0; }
+  .trow .hpill { flex: none; max-width: none; }
+  /* The header's text block is a container (narrow rules below). The whole title and the whole pill do not fit side
+     by side (measured by the card, see _fitPill): the pill goes to its own line, under the statistics kept to one
+     line; if that does not fit the banner either, the dot alone beside the title. */
+  .htext, .header { container: tbhead / inline-size; }
+  .titles.below > .trow { display: contents; }
+  .titles.below > .trow .hpill { order: 3; align-self: flex-start; max-width: 100%; }
+  .titles.below > .stats { order: 2; max-height: 16px; }
+  .titles.dot-only > .trow { display: flex; }
+  .titles.dot-only > .trow .hpill { order: 0; align-self: center; }
+  .titles.dot-only .hpill { padding: 0; background: none !important; overflow: visible; }
+  .titles.dot-only .hpill .txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  /* Very narrow: the dot alone, back on the title row (the label stays in its tooltip and for screen readers). */
+  @container tbcard (max-width: 200px) {
+    .titles.below > .trow { display: flex; }
+    .titles.below > .trow .hpill { order: 0; align-self: center; }
+    .hpill { padding: 0; background: none !important; overflow: visible; }
+    .hpill .txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  }
   /* On one line when they fit, else wrapped: the « · » that starts a line sits in the negative margin, clipped. */
-  .stats { font-size: 12px; line-height: 16px; color: #3d5670; overflow: hidden; }
+  .stats { font-size: 12px; line-height: 16px; color: #3d5670; overflow: hidden; max-height: 32px; flex: none; }
   .stats .parts { display: flex; flex-wrap: wrap; margin-left: -12px; }
   .night .stats { color: rgba(255,255,255,.82); }
-  .stats span { white-space: nowrap; }
+  .stats span { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .stats span::before { content: "·"; display: inline-block; width: 12px; text-align: center; }
-  .banner .zoom { position: absolute; top: 6px; right: 6px; color: #10283f; background: rgba(255,255,255,.55); }
-  .banner.night .zoom { color: #fff; background: rgba(10,20,40,.45); }
+  /* The mini card's detail button: a 24 px frosted round button in the banner's top right corner. */
+  .zoom { width: 24px; height: 24px; }
+  .banner .zoom { position: absolute; z-index: 2; top: 5px; right: 5px; color: #33506b; background: rgba(255,255,255,.55);
+                  box-shadow: inset 0 0 0 1px rgba(255,255,255,.7); backdrop-filter: blur(4px); }
+  .banner .zoom:hover { background: rgba(255,255,255,.75); }
+  .banner.night .zoom { color: #fff; background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
+  .banner.night .zoom:hover { background: rgba(255,255,255,.22); }
+  /* Pills on the sky: a frosted glass under the tint. */
+  .banner .chip { background: color-mix(in srgb, var(--c) 18%, rgba(255,255,255,.78)); color: color-mix(in srgb, var(--c) 45%, #0d2a45); }
+  .banner.night .chip { background: color-mix(in srgb, var(--c) 30%, rgba(8,18,38,.55)); color: color-mix(in srgb, var(--c) 35%, #ffffff); }
   /* Narrow card: no room for the scene beside the text, the sky alone stays. */
-  @container (max-width: 300px) { .tb-scene { display: none; } .htext { right: 40px; } }
+  @container tbcard (max-width: 300px) { .tb-scene { display: none; } .htext { right: 12px; } .htext.zoomed { right: 34px; } }
   /* Classic header (illustration: false): a round tinted icon, the title and the statistics. */
   .header { display: flex; align-items: center; gap: 10px; padding: 12px 12px 8px; }
-  .logo { height: 40px; width: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; color: var(--tb-accent);
-          background: color-mix(in srgb, var(--tb-accent) 16%, transparent); }
+  .logo { height: 40px; width: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; color: var(--c, var(--tb-accent));
+          background: color-mix(in srgb, var(--c, var(--tb-accent)) 16%, transparent); }
   .logo { position: relative; }
   .logo .icon { width: 24px; height: 24px; }
-  .header .titles { flex: 1; min-width: 0; }
+  .header .titles { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   .header .name { font-size: 16px; font-weight: 500; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .header .stats { color: var(--secondary-text-color); }
-  .header .zoom { color: var(--secondary-text-color); margin: -4px -4px -4px 0; }
+  .header { position: relative; }
+  .header.zoomed { padding-right: 40px; }
+  .header .zoom { position: absolute; top: 12px; right: 12px; color: var(--secondary-text-color); box-shadow: inset 0 0 0 1px var(--divider-color, rgba(127,127,127,.3)); }
 `;
 
 const TB_FULL_STYLE = `
@@ -416,6 +474,7 @@ const TB_DIALOG_STYLE = `
 
 const TB_MINI_STYLE = `
   .banner { --tb-banner-h: 90px; --tb-scene-w: 218px; }
+  .htext { gap: 8px; }
   .htext .titles { gap: 1px; }
   .nt-time { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
   .nt-time b { font-size: 20px; font-weight: 700; line-height: 26px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -425,9 +484,26 @@ const TB_MINI_STYLE = `
   .nt-line .dest { font-weight: 500; }
   .banner .plat { border-color: rgba(16,40,63,.35); height: 18px; font-size: 11px; }
   .banner.night .plat { border-color: rgba(255,255,255,.45); }
-  .banner .chip { line-height: 16px; background: rgba(255,255,255,.7); color: color-mix(in srgb, var(--c) 60%, #10283f); }
-  .banner.night .chip { background: rgba(10,20,40,.5); color: color-mix(in srgb, var(--c) 45%, #fff); }
-  .banner .type { background: rgba(255,255,255,.7); color: color-mix(in srgb, var(--c) 70%, #10283f); }
+  .nt-time { align-items: center; gap: 8px; }
+  .nt-time .hpill { flex: none; }
+  .nt-meta .hpill { flex: 0 1 auto; }
+  .nt-time .name { font-size: 16px; font-weight: 600; line-height: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 1000 auto; min-width: 0; }
+  .nt-time .rel, .nt-meta .rel { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .nt-time .wide, .nt-time .narrow, .nt-meta .wide, .nt-meta .narrow, .nt-line .narrow { display: flex; align-items: center; min-width: 0; }
+  .nt-meta .wide { gap: 6px; }
+  .nt-time .narrow, .nt-meta .narrow, .nt-line .narrow { display: none; }
+  .nt-line .narrow { flex: none; }
+  .nt-time .wide { flex: none; }
+  /* The status pill does not fit beside the time (or the station's name) with its whole label (measured by the card,
+     see _fitPill): it goes to the last row, « in 8 min » to the time row. */
+  .titles.below .nt-time .wide, .titles.below .nt-meta .wide { display: none; }
+  .titles.below .nt-time .narrow, .titles.below .nt-meta .narrow, .titles.below .nt-line .narrow { display: flex; }
+  @container tbcard (max-width: 200px) {
+    .titles.below .nt-time .wide, .titles.below .nt-meta .wide { display: flex; }
+    .titles.below .nt-time .narrow, .titles.below .nt-meta .narrow, .titles.below .nt-line .narrow { display: none; }
+  }
+  /* A narrow mini card: a smaller clock leaves its status pill whole. */
+  @container tbcard (max-width: 260px) { .nt-time b { font-size: 18px; } .nt-time { gap: 6px; } }  .banner .type { background: rgba(255,255,255,.7); color: color-mix(in srgb, var(--c) 70%, #10283f); }
   .banner.night .type { background: rgba(10,20,40,.5); color: color-mix(in srgb, var(--c) 40%, #fff); }
   .next { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 2px; }
   .next .nt-time b { font-size: 20px; }
@@ -473,6 +549,18 @@ class TbBase extends HTMLElement {
 
   connectedCallback() {
     (this._popupWatch ??= tbWatchOutside(this, (ev) => this._onPopupOutside(ev))).on();
+    // A new width (or the web font loaded): the status pill is fitted again, in the next frame.
+    if (typeof ResizeObserver === "function") {
+      this._resize ??= new ResizeObserver((entries) => {
+        const w = Math.round(entries.at(-1).contentRect.width);
+        if (w === this._fitWidth) return;
+        this._fitWidth = w;
+        cancelAnimationFrame(this._fitFrame);
+        this._fitFrame = requestAnimationFrame(() => this._fitPill());
+      });
+      this._resize.observe(this);
+    }
+    document.fonts?.ready?.then(() => this._fitPill());
     // Relative times (« in 8 min », boarding, trains gone) follow the clock, not only the states.
     clearInterval(this._timer);
     this._timer = setInterval(() => this._tick(), 20000);
@@ -483,6 +571,8 @@ class TbBase extends HTMLElement {
     this._popupWatch?.off();
     clearInterval(this._timer);
     this._timer = null;
+    this._resize?.disconnect();
+    this._fitWidth = null;
     // Left (another view, a conditional card hidden): back to its default state, without its popup.
     this._popup = null;
     this._tab = null;
@@ -543,6 +633,48 @@ class TbBase extends HTMLElement {
       this._html = html;
       tbMorph(this.shadowRoot, html);
     }
+    this._fitPill();
+  }
+
+  // The header's status pill goes right after the title (the mini card: the time), on its row, only while the title
+  // stays whole and the pill's whole label fits beside it; otherwise it takes a line of its own under the subtitle
+  // (.below), the title whole on its row (cut only when it does not fit alone). There, in the banner, the statistics
+  // keep one line; if the text still does not fit above the track strip, the pill keeps its dot alone (.dot-only, its
+  // label in its tooltip and for screen readers). Measured after each render and on each new width, whatever the
+  // language: no fixed width threshold.
+  _fitPill() {
+    if (!this.isConnected) return;
+    for (const t of this.shadowRoot?.querySelectorAll?.(".titles") || []) {
+      // The full card's title row, else the mini card's time row (its pill in the « wide » span).
+      const chip = t.querySelector(".trow > .chip, .nt-time > .wide > .chip");
+      if (!chip?.getBoundingClientRect) continue;
+      t.classList.remove("below", "dot-only");
+      const row = chip.closest(".trow, .nt-time");
+      const name = row.firstElementChild;
+      const shown = name && name !== chip && getComputedStyle(name).display !== "none";
+      const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+      // The clock keeps its width; a title counts whole.
+      const title = !shown ? 0 : (name.matches(".name") ? tbTextWidth(name) : name.getBoundingClientRect().width) + gap;
+      if (title + chip.getBoundingClientRect().width > t.getBoundingClientRect().width - 0.5) {
+        t.classList.add("below");
+        const banner = t.closest(".banner");
+        if (banner) {
+          const b = banner.getBoundingClientRect();
+          const track = parseFloat(getComputedStyle(banner).getPropertyValue("--tb-track-h")) || 10;
+          // Each element as it shows: its box cut by its ancestors that hide their overflow (a clamped line).
+          const out = [...t.querySelectorAll("*")].some((n) => {
+            let { top, bottom } = n.getBoundingClientRect();
+            for (let p = n.parentElement; p && p !== t; p = p.parentElement) {
+              if (getComputedStyle(p).overflowY === "visible") continue;
+              top = Math.max(top, p.getBoundingClientRect().top);
+              bottom = Math.min(bottom, p.getBoundingClientRect().bottom);
+            }
+            return bottom - top > 0.5 && (top < b.top - 0.5 || bottom > b.bottom - track + 0.5);
+          });
+          if (out) t.classList.add("dot-only");
+        }
+      }
+    }
   }
 
   // The tab shown: the one picked, else the configured default, else the first one that exists.
@@ -596,9 +728,10 @@ class TbBase extends HTMLElement {
     }</div></ha-card>`;
   }
 
-  // Statistics of a tab: « Departures · 18 trains · 89 % on time ».
-  _stats(tabKey, tab) {
-    const parts = [this._t(tabKey), tbPlural(this._hass, this._config, "trains", tab?.total ?? 0)];
+  // Statistics of a tab: « Departures · 18 trains · 89 % on time »; without the tab's name when the tabs, right
+  // under the header, already show it (`named` false).
+  _stats(tabKey, tab, named = true) {
+    const parts = [...(named ? [this._t(tabKey)] : []), tbPlural(this._hass, this._config, "trains", tab?.total ?? 0)];
     if (tab?.onTime !== null && tab?.onTime !== undefined) {
       const pct = new Intl.NumberFormat(tbFmtLang(this._hass, this._config), { style: "percent", maximumFractionDigits: 0 }).format(tab.onTime / 100);
       parts.push(tbFill(this._t("on_time_pct"), { pct }));
@@ -606,21 +739,34 @@ class TbBase extends HTMLElement {
     return `<div class="parts">${parts.map((p) => `<span>${tbEsc(p)}</span>`).join("")}</div>`;
   }
 
-  // The header: the illustration (with the title and `extra` on its sky), or the classic header.
+  // The header: the illustration (with the title, its status pill and `extra` on its sky), or the classic header.
+  // `extra.cls` is the status colour of the header icon; the classic header has the board's own (`classicCls`).
   _header(board, tabKey, extra) {
     const c = this._config;
     const name = tbEsc(this._name(board));
+    const zoom = this._zoomButton();
+    const zoomed = zoom ? " zoomed" : "";
     if (tbOpt(c, "illustration") === false) {
-      return `<div class="header"><div class="logo">${tbIcon(TB_ICONS.train)}${this._badge(board)}</div><div class="titles"><div class="name">${name}</div>${
-        extra.classic
-      }</div>${this._zoomButton()}</div>`;
+      return `<div class="header${zoomed}"><div class="logo ${extra.classicCls ?? extra.cls}">${tbIcon(TB_ICONS.train)}${this._badge(board)}</div><div class="titles"><div class="trow"><div class="name">${name}</div>${
+        extra.classicPill ?? extra.pill
+      }</div>${extra.classic}</div>${zoom}</div>`;
     }
     const cls = `banner ${tabKey === "arrivals" ? "arr" : "dep"}${tbIsNight(this._hass, c) ? " night" : ""}`;
     // The mini card's sky holds the next train: the station's name stays in the icon's tooltip.
-    const title = extra.noName ? "" : `<div class="name">${name}</div>`;
-    return `<div class="${cls}">${tbSceneSvg(this._uid)}<div class="htext"><div class="logo" title="${name}">${tbIcon(TB_ICONS.train)}${this._badge(board)}</div><div class="titles">${title}${
+    const title = extra.noName ? "" : `<div class="trow"><div class="name">${name}</div>${extra.pill}</div>`;
+    return `<div class="${cls}">${tbSceneSvg(this._uid)}<div class="htext${zoomed}"><div class="logo ${extra.cls}" title="${name}">${tbIcon(TB_ICONS.train)}${this._badge(board)}</div><div class="titles">${title}${
       extra.banner
-    }</div></div>${this._zoomButton()}</div>`;
+    }</div></div>${zoom}</div>`;
+  }
+
+  // A status pill of the header: its dot, then its label (also its tooltip, kept when only the dot shows).
+  _hpill(cls, text) {
+    return `<span class="chip hpill ${cls}" title="${tbEsc(text)}"><span class="dot"></span><span class="txt">${tbEsc(text)}</span></span>`;
+  }
+
+  _boardPill(tab, now) {
+    const st = tbBoardStatus(this._hass, this._config, tab, now);
+    return { cls: st.cls, pill: this._hpill(st.cls, this._t(st.key)) };
   }
 
   _zoomButton() {
@@ -737,9 +883,9 @@ class TrainBoardCard extends TbBase {
     const c = this._config;
     const tabKey = this._activeTab(board);
     const tab = board.tabs[tabKey];
-    const stats = this._stats(tabKey, tab);
-    const header = this._header(board, tabKey, { banner: `<div class="stats">${stats}</div>`, classic: `<div class="stats">${stats}</div>` });
     const both = board.tabs.departures && board.tabs.arrivals;
+    const stats = this._stats(tabKey, tab, !both);
+    const header = this._header(board, tabKey, { banner: `<div class="stats">${stats}</div>`, classic: `<div class="stats">${stats}</div>`, ...this._boardPill(tab, now) });
     const tabs = both
       ? `<div class="tabs" role="tablist">${["departures", "arrivals"]
           .map((k) => `<button type="button" class="tab${k === tabKey ? " active" : ""}" role="tab" aria-selected="${k === tabKey}" data-tab="${k}">${tbEsc(this._t(k))}</button>`)
@@ -855,15 +1001,35 @@ class TrainBoardMiniCard extends TrainBoardCard {
     const tab = board.tabs[tabKey];
     const trains = tab?.trains || [];
     const t = trains.find((x) => !x.cancelled) || trains[0];
+    const boardPill = this._boardPill(tab, now);
     let info;
+    let status = boardPill;
     if (t) {
+      // The next train: its time, then its status pill (a train known from the timetable only: « Scheduled »).
+      const st = tbStatus(this._hass, this._config, t, tab.kind, now) || { cls: "na", text: this._t("scheduled") };
+      status = { cls: st.cls, pill: this._hpill(st.cls, st.text) };
       const rel = this._relative(t, now);
       const plat = tbOpt(this._config, "show_platform") && t.platform ? `<span class="plat${t.platformChanged ? " changed" : ""}">${tbEsc(t.platform)}</span>` : "";
-      info = `<div class="nt-time"><b class="${t.cancelled ? "struck" : ""}">${tbEsc(tbClock(this._hass, this._config, t.scheduled))}</b>${rel ? `<span class="rel">${tbEsc(rel)}</span>` : ""}</div>
-        <div class="nt-line">${this._typePill(t)}<span class="dest">${tbEsc(this._place(t, tab.kind))}</span></div>
-        <div class="nt-meta">${plat}${this._statusPill(t, tab.kind, now)}</div>`;
-    } else info = `<div class="nt-line">${tbEsc(this._t("no_trains"))}</div>`;
-    const header = this._header(board, tabKey, { banner: info, noName: true, classic: `<div class="stats">${this._stats(tabKey, tab)}</div>` });
+      // Beside the scenery the time row lacks room for the pill: it then goes to the last row, « in 8 min » to the
+      // time row and the platform before the train type (each item is written in both places, one of them hidden
+      // by the styles with display: none, so it is neither seen nor read twice).
+      const relHtml = rel ? `<span class="rel">${tbEsc(rel)}</span>` : "";
+      const both = (wide, narrow) => `${wide ? `<span class="wide">${wide}</span>` : ""}${narrow ? `<span class="narrow">${narrow}</span>` : ""}`;
+      info = `<div class="nt-time"><b class="${t.cancelled ? "struck" : ""}">${tbEsc(tbClock(this._hass, this._config, t.scheduled))}</b>${both(status.pill, relHtml)}</div>
+        <div class="nt-line">${both("", plat)}${this._typePill(t)}<span class="dest">${tbEsc(this._place(t, tab.kind))}</span></div>
+        <div class="nt-meta">${both(plat, "")}${both(relHtml, status.pill)}</div>`;
+    } else
+      // No train: the station's name and the board's pill (« No trains »).
+      info = `<div class="nt-time"><span class="name">${tbEsc(this._name(board))}</span><span class="wide">${boardPill.pill}</span></div>
+        <div class="nt-meta"><span class="narrow">${boardPill.pill}</span></div>`;
+    const header = this._header(board, tabKey, {
+      banner: info,
+      noName: true,
+      classic: `<div class="stats">${this._stats(tabKey, tab)}</div>`,
+      ...status,
+      classicCls: boardPill.cls,
+      classicPill: boardPill.pill,
+    });
     const below = tbOpt(this._config, "illustration") === false ? `<div class="next">${info}</div>` : "";
     return `<style>${TB_BASE_STYLE}${this._sceneStyle()}${TB_BANNER_STYLE}${TB_MINI_STYLE}</style><ha-card>${header}${below}</ha-card>`;
   }

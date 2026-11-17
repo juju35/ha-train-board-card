@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { after, before, test } from "node:test";
 import { withLogos } from "../scripts/brand-logos.mjs";
 import { SOURCES } from "../scripts/sources.mjs";
+import { CLOCK } from "../scripts/screenshots/harness.mjs";
 import { ARRIVALS_ENTITY, boardHass, ENTITY } from "../scripts/screenshots/mock.mjs";
 
 const root = new URL("../", import.meta.url).pathname;
@@ -36,13 +37,20 @@ const measure = async (cases) => {
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  // The mock board's clock: its trains are still to come.
+  await page.clock.setFixedTime(new Date(CLOCK));
   await page.setContent("<!doctype html><body style='margin:0;font-family:Roboto,Arial,sans-serif'></body>");
   await page.addScriptTag({ content: HA_CARD });
   await page.addScriptTag({ content: src });
   const hass = boardHass();
   const out = await page.evaluate(
-    ({ cases, hass, THEMES, ENTITY, ARRIVALS_ENTITY }) =>
-      cases.map((c) => {
+    async ({ cases, hass, THEMES, ENTITY, ARRIVALS_ENTITY }) => {
+      // Sequential, each card measured two frames after it was mounted (the card fits its status pill on the
+      // resize observer's first notice, as in Home Assistant).
+      const all = [];
+      for (const c of cases)
+        all.push(
+          await (async () => {
         const box = document.createElement("div");
         box.style.cssText = `width:${c.width}px;${Object.entries(THEMES[c.theme]).map(([k, v]) => `${k}:${v}`).join(";")}`;
         document.body.appendChild(box);
@@ -51,11 +59,73 @@ const measure = async (cases) => {
         el.hass = { ...hass, themes: { darkMode: c.theme === "dark" } };
         box.appendChild(el);
         if (c.tab) el.shadowRoot.querySelector(`[data-tab="${c.tab}"]`).click();
+        if (c.zoom) el.shadowRoot.querySelector(".zoom").dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true, detail: 1 }));
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         const sr = el.shadowRoot;
         const card = sr.querySelector("ha-card").getBoundingClientRect();
         const svg = sr.querySelector(".tb-scene");
         const text = sr.querySelector(".htext");
         const res = { name: JSON.stringify(c), overflow: [] };
+        // The header's status pill shown (one of the mini card's pair is hidden): its label whole, or the dot alone
+        // on purpose; on the title row or under it; its share of the title block; the title still readable.
+        const rect = (n) => n.getBoundingClientRect();
+        const pill = [...sr.querySelectorAll(".htext .hpill, .header .hpill")].find((n) => n.getClientRects().length > 0);
+        if (pill) {
+          const txt = pill.querySelector(".txt");
+          const block = pill.closest(".titles");
+          const title = block.querySelector(".name, .nt-time b");
+          const mid = (n) => (rect(n).top + rect(n).bottom) / 2;
+          const whole = (n) => {
+            const range = document.createRange();
+            range.selectNodeContents(n);
+            return range.getBoundingClientRect().width;
+          };
+          res.pill = {
+            cut: txt.scrollWidth > txt.clientWidth + 0.5,
+            dotOnly: getComputedStyle(txt).position === "absolute",
+            inside: rect(pill).right <= rect(block).right + 0.5 && rect(pill).bottom <= card.bottom,
+            onTitleRow: Math.abs(mid(pill) - mid(title)) < 4,
+            // Whether the whole pill fits on the title row beside the whole title (or the clock), and whether the title
+            // is whole (no ellipsis).
+            fits: (() => {
+              const label = pill.cloneNode(true);
+              label.style.cssText = "position:absolute;visibility:hidden;padding:1px 8px";
+              label.querySelector(".txt").style.cssText = "position:static";
+              pill.parentElement.appendChild(label);
+              const w = rect(label).width;
+              label.remove();
+              return whole(title) + 8 + w <= rect(block).right - rect(title).left - 1;
+            })(),
+            nameWhole: whole(title) <= rect(title).width + 0.05,
+            // Nothing of the banner's text under its track strip or above it.
+            low: (() => {
+              const b = sr.querySelector(".banner");
+              if (!b) return [];
+              const bb = rect(b);
+              // What shows of an element vertically: its box cut by its ancestors that hide their overflow.
+              const seen = (n) => {
+                let { top, bottom } = rect(n);
+                for (let p = n.parentElement; p && p !== b; p = p.parentElement)
+                  if (getComputedStyle(p).overflowY !== "visible") {
+                    top = Math.max(top, rect(p).top);
+                    bottom = Math.min(bottom, rect(p).bottom);
+                  }
+                return { top, bottom };
+              };
+              return [...b.querySelectorAll(".htext *")]
+                .filter((n) => n.getClientRects().length && n.children.length === 0 && n.textContent.trim())
+                .filter((n) => {
+                  const v = seen(n);
+                  return v.bottom - v.top > 0.5 && (v.bottom > bb.bottom - 10 + 0.5 || v.top < bb.top - 0.5);
+                })
+                .map((n) => n.textContent.trim());
+            })(),
+            titleFull: title.scrollWidth,
+            label: pill.getAttribute("title"),
+            titleWidth: rect(title).width,
+            ch: parseFloat(getComputedStyle(title).fontSize) * 2,
+          };
+        }
         // The round icon of the header: 40 px on both cards, its badge inside the banner.
         const logo = sr.querySelector(".htext .logo");
         if (logo) {
@@ -83,7 +153,10 @@ const measure = async (cases) => {
           res.fade = grad ? [Number(grad.getAttribute("x1")), grad.querySelector("stop").getAttribute("stop-opacity")] : null;
         }
         return res;
-      }),
+          })(),
+        );
+      return all;
+    },
     { cases, hass, THEMES, ENTITY, ARRIVALS_ENTITY },
   );
   await page.close();
@@ -126,4 +199,63 @@ test("a narrow card keeps the sky alone: no scene beside text that would not fit
   if (skip) return t.skip(skip);
   const [r] = await measure([{ type: "train-board-mini-card", width: 280, lang: "en", theme: "light" }]);
   assert.equal(r.sceneLeft, undefined);
+});
+
+test("every header has its status pill: on the title row only beside a whole title, else under the subtitle, its label whole or its dot alone, never under the track", async (t) => {
+  if (skip) return t.skip(skip);
+  const all = [];
+  for (const lang of ["en", "fr", "de", "hu", "el", "ru", "pl"])
+    for (const theme of ["light", "dark"]) {
+      for (const width of [200, 245, 300, 380, 460, 500]) {
+        all.push({ type: "train-board-card", width, lang, theme });
+        all.push({ type: "train-board-card", width, lang, theme, config: { illustration: false } });
+        all.push({ type: "train-board-mini-card", width, lang, theme });
+        all.push({ type: "train-board-mini-card", width, lang, theme, config: { illustration: false } });
+        all.push({ type: "train-board-mini-card", width, lang, theme, zoom: true });
+        // No train to show: the station and the board's pill.
+        all.push({ type: "train-board-mini-card", width, lang, theme, config: { platforms: "99" } });
+      }
+    }
+  for (const r of await measure(all)) {
+    const c = JSON.parse(r.name);
+    assert.ok(r.pill, `no status pill: ${r.name}`);
+    assert.ok(r.pill.inside, `pill outside its block: ${r.name}`);
+    assert.ok(r.pill.titleWidth + 0.5 >= Math.min(r.pill.ch, r.pill.titleFull), `title ${r.pill.titleWidth} px: ${r.name}`);
+    assert.deepEqual(r.pill.low, [], `text under the track strip or above the banner: ${r.name}`);
+    if (c.width <= 200) assert.ok(r.pill.dotOnly, `the dot alone: ${r.name}`);
+    else {
+      assert.ok(r.pill.dotOnly || !r.pill.cut, `pill « ${r.pill.label} » cut: ${r.name}`);
+      if (r.pill.onTitleRow && !r.pill.dotOnly) assert.ok(r.pill.nameWhole, `title cut beside the pill: ${r.name}`);
+      // Under the statistics (or on the mini card's last row) only when it cannot sit beside the whole title, or
+      // beside the clock.
+      if (!r.pill.onTitleRow && r.pill.fits) assert.fail(`pill not beside the title although it fits there: ${r.name}`);
+    }
+  }
+});
+
+test("the mini card's detail button sits in the banner's top right corner: 24 px, 5 px from its edges", async (t) => {
+  if (skip) return t.skip(skip);
+  const page = await browser.newPage({ viewport: { width: 1000, height: 600 } });
+  await page.setContent("<!doctype html><body style='margin:0'></body>");
+  await page.addScriptTag({ content: HA_CARD });
+  await page.addScriptTag({ content: src });
+  const hass = boardHass();
+  for (const zoom of [false, true]) {
+    const r = await page.evaluate(
+      ({ hass, ENTITY, zoom }) => {
+        document.body.innerHTML = "<div style='width:380px'></div>";
+        const el = document.createElement("train-board-mini-card");
+        el.setConfig({ type: "custom:train-board-mini-card", entity: ENTITY });
+        el.hass = hass;
+        document.body.firstChild.appendChild(el);
+        if (zoom) el.shadowRoot.querySelector(".zoom").dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true, detail: 1 }));
+        const b = el.shadowRoot.querySelector(".zoom").getBoundingClientRect();
+        const banner = el.shadowRoot.querySelector(".banner").getBoundingClientRect();
+        return [Math.round(b.width), Math.round(b.height), Math.round(b.top - banner.top), Math.round(banner.right - b.right)];
+      },
+      { hass, ENTITY, zoom },
+    );
+    assert.deepEqual(r, [24, 24, 5, 5], `zoomed: ${zoom}`);
+  }
+  await page.close();
 });

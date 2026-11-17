@@ -33,7 +33,7 @@ The cards read the sensors of **twelve integrations** — [DB Infoscreen](https:
 | Departures | Arrivals |
 |---|---|
 | <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/card-dark.png"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/card.png" alt="Train board card, departures" width="400"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/card-arrivals-dark.png"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/card-arrivals.png" alt="Train board card, arrivals" width="400"></picture> |
-| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure.gif" alt="The train leaves the platform" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival.gif" alt="The train comes in and stops" width="400"> |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure-dark.gif"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure.gif" alt="The train leaves the platform" width="400"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival-dark.gif"><img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival.gif" alt="The train comes in and stops" width="400"></picture> |
 
 | Mini card | At night |
 |---|---|
@@ -45,14 +45,15 @@ The cards read the sensors of **twelve integrations** — [DB Infoscreen](https:
 - **Brand badge**: the logo of the railway behind the integration (Deutsche Bahn, National Rail, NS, SNCF, SBB, Trafikverket, Trenitalia, SNCB, or the Public Transport icon) on the header icon, like the other multi-brand cards; `brand` (YAML only) picks another bundled logo, e.g. `obb` for a DB Infoscreen station on the ÖBB backend
 - Twelve integrations, detected from the entity (its integration in the entity registry, else its attributes), or forced with `integration`; see [Supported integrations](#supported-integrations)
 - **Animated header**: a station with its canopy, arched windows and a clock whose hand turns, catenary, platform with its yellow safety line, and a generic train (no operator livery) with its pantograph and an occasional spark. On the Departures tab the train waits at the platform then leaves to the right; on the Arrivals tab it comes in from the left and stops; the animation starts over when the tab changes. Nothing moves under the text: at the left, on the sky, the round tinted train icon (40 px, the brand badge at its bottom right) and beside it the station name and the statistics
-- **Day and night**: at night the sky turns dark blue with stars and the moon, the station's windows and the platform lamps light up, the train's headlight shines. `illustration_theme: auto` follows `sun.sun` (Home Assistant's dark theme without it), or force `day` / `night`; `illustration: false` gives a classic header
-- **Statistics** in the header: « Departures · 18 trains · 89 % on time », the share of trains on time computed over the board
+- **Day and night**: at night the sky turns dark blue with stars and the moon, the station's windows and the platform lamps light up, the train's headlight shines. `illustration_theme: auto` shows the night while `sun.sun` is below the horizon or Home Assistant uses a dark theme, or force `day` / `night`; `illustration: false` gives a classic header
+- **Statistics** in the header: « 18 trains · 89 % on time », the share of trains on time computed over the board, with the board's name first (« Departures · … ») when there are no tabs to show it
+- **Status pill** on the title row of the header, in the colour of the header icon: **On time** (green), **Delays** (orange) or **Disruption** (red, a cancelled train) among the trains listed, **Scheduled** (grey, timetable only) or **No trains**; when the title lacks room it goes to its own line under the statistics, and on a very narrow card only its dot shows
 - **Departures / Arrivals tabs**: the arrivals come from a second sensor (`arrival_entity`); without arrivals the tabs are not shown
 - **Board**: scheduled time, train type pill coloured by family (high speed, intercity, regional; [your own colours](#train-type-colours)), destination (« from … » for arrivals), train number, platform in a small frame (orange when it changed), status pill: **on time**, **+12 min**, **boarding** (two minutes before), **arrived**, **delayed** (no time given), **cancelled** (the time struck through). Columns the integration does not provide are not shown
 - **Train details** on a click: a popup at the top of the card with the scheduled and expected times, platform (and its change), operator, calling points and disruption messages; it closes on a click anywhere else, with Escape, or when the card leaves the page
 - **Station notices** (lift out of order, works…) in a line above the board, all of them in a popup on a click
 - Filters: `platforms`, `train_types` (categories or families), `hide_cancelled`; `max_trains` rows
-- **Mini card**: the same banner, lower, with the same 40 px round icon and the next train beside it — large time, « in 8 min », type and destination, platform and status. Its detail button (top right) switches it to the full board and back; a click anywhere outside the card brings the compact view back
+- **Mini card**: the same banner, lower, with the same 40 px round icon and the next train beside it — large time with its status pill right after it (the header icon in the same colour), type and destination, platform and « in 8 min » (beside the scenery, where the time row lacks room, the pill takes the last row and « in 8 min » the time row); with no train to show, the station's name and the board's pill. Its detail button (top right) switches it to the full board and back; a click anywhere outside the card brings the compact view back
 - Visual editor for both cards (no YAML needed); options left at their default are kept out of the YAML
 - Respects the « reduce motion » setting of the system: the train stays at the platform
 - Local times of the integrations read in Home Assistant's time zone, clock times in your 12 / 24 h setting
@@ -259,7 +260,7 @@ entity: sensor.train_traveler_ren_nan_journeys
 | `title` | both | Station name | Title of the card |
 | `brand` | both | From the integration | YAML only: the logo of the brand badge on the header icon — `deutschebahn`, `nationalrail`, `nederlandsespoorwegen`, `sncf`, `obb`, `sbb`, `trafikverket`, `trenitalia`, `sncb` or `public-transport` (see [Brand logos](#brand-logos)) |
 | `illustration` | both | `true` | The animated station header; `false` gives a classic header with a round tinted icon |
-| `illustration_theme` | both | `auto` | `auto` (night while `sun.sun` is below the horizon; without `sun.sun`, Home Assistant's dark theme), `day` or `night` |
+| `illustration_theme` | both | `auto` | `auto` (night while `sun.sun` is below the horizon or Home Assistant uses a dark theme), `day` or `night` |
 | `default_tab` | both | `departures` | Tab shown first: `departures` or `arrivals` (the mini card shows the next train of this tab) |
 | `show_departures` | both | `true` | The Departures tab |
 | `show_arrivals` | both | `true` | The Arrivals tab (only with an `arrival_entity`) |
@@ -276,6 +277,19 @@ entity: sensor.train_traveler_ren_nan_journeys
 | `language` | both | Auto | Force language: `en`, `fr`, `de`, `es`, `sr`, `sr-Latn`, `it`, `nl`, `pt`, `pl`, `ro`, `da`, `sv`, `bg`, `ru`, `uk`, `hu`, `sk`, `cs`, `sl`, `lv` or `el` (auto-detects from HA settings) |
 
 ## Screenshots
+
+### Animations
+
+With `illustration_theme: auto`, the light theme shows the day picture and the dark theme the night picture.
+
+| Light | Dark |
+|---|---|
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure.gif" alt="The train leaves the platform, light" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/departure-dark.gif" alt="The train leaves the platform, dark" width="400"> |
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival.gif" alt="The train comes in and stops, light" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/arrival-dark.gif" alt="The train comes in and stops, dark" width="400"> |
+
+Forced night (`illustration_theme: night`):
+
+<img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/night.gif" alt="The station at night" width="400">
 
 ### Departures and arrivals
 
@@ -296,8 +310,7 @@ entity: sensor.train_traveler_ren_nan_journeys
 |---|---|
 | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card.png" alt="Mini card, light" width="380"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card-dark.png" alt="Mini card, dark" width="380"> |
 | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card-zoom.png" alt="Mini card unfolded, light" width="400"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-card-zoom-dark.png" alt="Mini card unfolded, dark" width="400"> |
-
-<img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini.gif" alt="The mini card's animation" width="380">
+| <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini.gif" alt="The mini card's animation, light" width="380"> | <img src="https://raw.githubusercontent.com/juju35/ha-train-board-card/main/screenshots/mini-dark.gif" alt="The mini card's animation, dark" width="380"> |
 
 ### Classic header and an integration without train types
 

@@ -1,5 +1,6 @@
-// Records the animations into screenshots/*.gif (needs ffmpeg): the train leaving (Departures, day), coming in
-// (Arrivals, day), the night picture, and the mini card.
+// Records the animations into screenshots/*.gif (needs ffmpeg), with dark twins (*-dark.gif): the train leaving
+// (Departures), coming in (Arrivals), the mini card, and the forced night picture (light theme only). `illustration_theme: auto` except for the
+// night GIF: day picture in the light theme, night picture in the dark one (dark theme rule).
 // Usage: npm install && npm run build && node scripts/screenshots/animations.mjs
 // CSS animations are paused and stepped frame by frame, each by a fraction of its own cycle, so every GIF loops
 // cleanly whatever the machine's speed.
@@ -73,10 +74,19 @@ const record = async (browser, { file, theme, tag, config, open, width = 460, ba
 };
 
 const board = { entity: ENTITY, arrival_entity: ARRIVALS_ENTITY };
+const GIFS = [
+  // The full card's banner and tabs only (the list does not move).
+  { file: "departure", tag: "train-board-card", config: board, banner: 152 },
+  { file: "arrival", tag: "train-board-card", config: board, open: '[data-tab="arrivals"]', banner: 152 },
+  // The night scene, forced. Light theme only: in the dark theme it would be the same GIF as departure-dark (one GIF per
+  // distinct state).
+  { file: "night", tag: "train-board-card", config: { ...board, illustration_theme: "night" }, banner: 152, themes: ["light"] },
+  { file: "mini", tag: "train-board-mini-card", config: board, width: 380 },
+];
 const browser = await launch();
-// The full card's banner and tabs only (the list does not move).
-await record(browser, { file: "departure", theme: "light", tag: "train-board-card", config: { ...board, illustration_theme: "day" }, banner: 152 });
-await record(browser, { file: "arrival", theme: "light", tag: "train-board-card", config: { ...board, illustration_theme: "day" }, open: '[data-tab="arrivals"]', banner: 152 });
-await record(browser, { file: "night", theme: "dark", tag: "train-board-card", config: { ...board, illustration_theme: "night" }, banner: 152 });
-await record(browser, { file: "mini", theme: "light", tag: "train-board-mini-card", config: { ...board, illustration_theme: "day" }, width: 380 });
+for (const g of GIFS) {
+  for (const theme of g.themes ?? ["light", "dark"]) {
+    await record(browser, { ...g, theme, file: theme === "dark" ? `${g.file}-dark` : g.file });
+  }
+}
 await browser.close();

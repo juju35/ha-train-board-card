@@ -89,7 +89,7 @@ export const load = ({ now } = {}) => {
   sandbox.fire = (type, ev) => {
     for (const fn of winListeners[type] || []) fn(ev);
   };
-  const code = `{\n${SOURCES.map(read).join("\n")}\n;globalThis.__tb = { TB_STRINGS, TB_ADAPTERS, tbRead, tbBoard, tbStatus, tbTime, tbSplitTrain, tbFamily, tbColor, tbIsNight,
+  const code = `{\n${SOURCES.map(read).join("\n")}\n;globalThis.__tb = { TB_STRINGS, TB_ADAPTERS, tbRead, tbBoard, tbStatus, tbBoardStatus, tbTime, tbSplitTrain, tbFamily, tbColor, tbIsNight,
     tbPlural, tbClock, tbCandidates, tbAdapterFor, tbFilter, tbOnTime, tbSceneSvg, TB_DEFAULTS };\n}`;
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox);
