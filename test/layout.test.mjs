@@ -44,8 +44,13 @@ const measure = async (cases) => {
   await page.addScriptTag({ content: src });
   const hass = boardHass();
   const out = await page.evaluate(
-    ({ cases, hass, THEMES, ENTITY, ARRIVALS_ENTITY }) =>
-      cases.map((c) => {
+    async ({ cases, hass, THEMES, ENTITY, ARRIVALS_ENTITY }) => {
+      // Sequential, each card measured two frames after it was mounted (the card fits its status pill on the
+      // resize observer's first notice, as in Home Assistant).
+      const all = [];
+      for (const c of cases)
+        all.push(
+          await (async () => {
         const box = document.createElement("div");
         box.style.cssText = `width:${c.width}px;${Object.entries(THEMES[c.theme]).map(([k, v]) => `${k}:${v}`).join(";")}`;
         document.body.appendChild(box);
@@ -55,6 +60,7 @@ const measure = async (cases) => {
         box.appendChild(el);
         if (c.tab) el.shadowRoot.querySelector(`[data-tab="${c.tab}"]`).click();
         if (c.zoom) el.shadowRoot.querySelector(".zoom").dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true, detail: 1 }));
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         const sr = el.shadowRoot;
         const card = sr.querySelector("ha-card").getBoundingClientRect();
         const svg = sr.querySelector(".tb-scene");
@@ -74,7 +80,15 @@ const measure = async (cases) => {
             dotOnly: getComputedStyle(txt).position === "absolute",
             inside: rect(pill).right <= rect(block).right + 0.5 && rect(pill).bottom <= card.bottom,
             onTitleRow: Math.abs(mid(pill) - mid(title)) < 4,
-            share: rect(pill).width / rect(block).width,
+            // Whether the whole pill fits on the title row beside the title cut down to 4 characters (or the clock).
+            fits: (() => {
+              const ctx = document.createElement("canvas").getContext("2d");
+              const cs = getComputedStyle(title);
+              ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+              const four = title.matches(".name") ? Math.min(title.scrollWidth, ctx.measureText(`${[...title.textContent.trim()].slice(0, 4).join("")}…`).width) : rect(title).width;
+              return four + 8 + rect(pill).width <= rect(block).right - rect(title).left - 1;
+            })(),
+            titleFull: title.scrollWidth,
             label: pill.getAttribute("title"),
             titleWidth: rect(title).width,
             ch: parseFloat(getComputedStyle(title).fontSize) * 2,
@@ -107,7 +121,10 @@ const measure = async (cases) => {
           res.fade = grad ? [Number(grad.getAttribute("x1")), grad.querySelector("stop").getAttribute("stop-opacity")] : null;
         }
         return res;
-      }),
+          })(),
+        );
+      return all;
+    },
     { cases, hass, THEMES, ENTITY, ARRIVALS_ENTITY },
   );
   await page.close();
@@ -171,11 +188,14 @@ test("every header has its status pill: whole label from 245 px, on the title ro
     const c = JSON.parse(r.name);
     assert.ok(r.pill, `no status pill: ${r.name}`);
     assert.ok(r.pill.inside, `pill outside its block: ${r.name}`);
-    assert.ok(r.pill.titleWidth >= r.pill.ch, `title ${r.pill.titleWidth} px: ${r.name}`);
+    assert.ok(r.pill.titleWidth + 0.5 >= Math.min(r.pill.ch, r.pill.titleFull), `title ${r.pill.titleWidth} px: ${r.name}`);
     if (c.width <= 200) assert.ok(r.pill.dotOnly, `the dot alone: ${r.name}`);
     else {
       assert.ok(!r.pill.dotOnly && !r.pill.cut, `pill « ${r.pill.label} » cut: ${r.name}`);
-      if (r.pill.onTitleRow && c.type === "train-board-card") assert.ok(r.pill.share <= 0.53, `pill ${(r.pill.share * 100).toFixed(0)} % of the title block: ${r.name}`);
+      // Under the statistics (or on the mini card's last row) only when it cannot sit beside the title cut down to 4
+      // characters, or beside the clock; on the title row of the full card ("Central Station") from 460 px.
+      if (!r.pill.onTitleRow && r.pill.fits) assert.fail(`pill not beside the title although it fits there: ${r.name}`);
+      if (c.lang === "en" && c.width >= 460 && (c.type === "train-board-card" || c.zoom)) assert.ok(r.pill.onTitleRow, `pill not beside the title: ${r.name}`);
     }
   }
 });

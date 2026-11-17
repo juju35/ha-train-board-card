@@ -248,6 +248,16 @@ const tbPatchChildren = (cur, next) => {
   });
   while (cur.childNodes.length > fresh.length) cur.removeChild(cur.lastChild);
 };
+// The width of an element's first four characters and an ellipsis, in its own font: the least a cut title keeps.
+let tbFourCtx;
+const tbFourChars = (el) => {
+  const cs = getComputedStyle(el);
+  tbFourCtx ??= document.createElement("canvas").getContext?.("2d");
+  if (!tbFourCtx) return 0;
+  tbFourCtx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  return tbFourCtx.measureText(`${[...el.textContent.trim()].slice(0, 4).join("")}\u2026`).width;
+};
+
 const tbMorph = (root, html) => {
   if (typeof document === "undefined" || !document.createElement("template").content) {
     root.innerHTML = html;
@@ -354,22 +364,21 @@ const TB_BANNER_STYLE = `
            box-shadow: 0 0 0 1px var(--divider-color, rgba(0,0,0,.12)), 0 0 0 3px var(--card-background-color, #fff); }
   .badge img { width: 100%; height: 100%; object-fit: contain; }
   .htext .name { font-size: 16px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  /* The title row: the title, then the status pill right after it; the title gives way first, the pill keeps room
-     for 4 characters of it and at most half of the row. */
+  /* The title row: the title, then the status pill right after it with its whole label; the title gives way first,
+     down to 4 characters. */
   .trow { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .trow .name { flex: 0 1000 auto; min-width: 0; }
-  .trow .hpill { flex: 0 1 auto; max-width: min(52%, calc(100% - 3.4em - 8px)); }
-  /* The header's text block is a container: the pill leaves the title row when it lacks room. */
+  .trow .hpill { flex: none; max-width: none; }
+  /* The header's text block is a container (narrow rules below). Not enough room beside the title for the whole pill
+     (measured by the card, see _fitPill): the pill goes to its own line, under the statistics. */
   .htext, .header { container: tbhead / inline-size; }
-  @container tbhead (max-width: 250px) {
-    .titles > .trow { display: contents; }
-    .titles > .trow .hpill { order: 3; align-self: flex-start; max-width: 100%; }
-    .titles > .stats { order: 2; }
-  }
+  .titles.below > .trow { display: contents; }
+  .titles.below > .trow .hpill { order: 3; align-self: flex-start; max-width: 100%; }
+  .titles.below > .stats { order: 2; }
   /* Very narrow: the dot alone, back on the title row (the label stays in its tooltip and for screen readers). */
   @container tbcard (max-width: 200px) {
-    .titles > .trow { display: flex; }
-    .titles > .trow .hpill { order: 0; align-self: center; }
+    .titles.below > .trow { display: flex; }
+    .titles.below > .trow .hpill { order: 0; align-self: center; }
     .hpill { padding: 0; background: none !important; overflow: visible; }
     .hpill .txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   }
@@ -475,23 +484,22 @@ const TB_MINI_STYLE = `
   .banner .plat { border-color: rgba(16,40,63,.35); height: 18px; font-size: 11px; }
   .banner.night .plat { border-color: rgba(255,255,255,.45); }
   .nt-time { align-items: center; gap: 8px; }
-  .nt-time .hpill { flex: 0 1 auto; }
+  .nt-time .hpill { flex: none; }
   .nt-meta .hpill { flex: 0 1 auto; }
   .nt-time .name { font-size: 16px; font-weight: 600; line-height: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 1000 auto; min-width: 0; }
-  .nt-time .name + .wide { max-width: calc(100% - 3.4em - 8px); }
   .nt-time .rel, .nt-meta .rel { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .nt-time .wide, .nt-time .narrow, .nt-meta .wide, .nt-meta .narrow, .nt-line .narrow { display: flex; align-items: center; min-width: 0; }
   .nt-meta .wide { gap: 6px; }
   .nt-time .narrow, .nt-meta .narrow, .nt-line .narrow { display: none; }
   .nt-line .narrow { flex: none; }
-  .nt-time .wide { flex: 0 1 auto; }
-  @container tbhead (max-width: 200px) {
-    .nt-time .wide, .nt-meta .wide { display: none; }
-    .nt-time .narrow, .nt-meta .narrow, .nt-line .narrow { display: flex; }
-  }
+  .nt-time .wide { flex: none; }
+  /* The status pill does not fit beside the time (or the station's name) with its whole label (measured by the card,
+     see _fitPill): it goes to the last row, « in 8 min » to the time row. */
+  .titles.below .nt-time .wide, .titles.below .nt-meta .wide { display: none; }
+  .titles.below .nt-time .narrow, .titles.below .nt-meta .narrow, .titles.below .nt-line .narrow { display: flex; }
   @container tbcard (max-width: 200px) {
-    .nt-time .wide, .nt-meta .wide { display: flex; }
-    .nt-time .narrow, .nt-meta .narrow, .nt-line .narrow { display: none; }
+    .titles.below .nt-time .wide, .titles.below .nt-meta .wide { display: flex; }
+    .titles.below .nt-time .narrow, .titles.below .nt-meta .narrow, .titles.below .nt-line .narrow { display: none; }
   }
   /* A narrow mini card: a smaller clock leaves its status pill whole. */
   @container tbcard (max-width: 260px) { .nt-time b { font-size: 18px; } .nt-time { gap: 6px; } }  .banner .type { background: rgba(255,255,255,.7); color: color-mix(in srgb, var(--c) 70%, #10283f); }
@@ -540,6 +548,18 @@ class TbBase extends HTMLElement {
 
   connectedCallback() {
     (this._popupWatch ??= tbWatchOutside(this, (ev) => this._onPopupOutside(ev))).on();
+    // A new width (or the web font loaded): the status pill is fitted again, in the next frame.
+    if (typeof ResizeObserver === "function") {
+      this._resize ??= new ResizeObserver((entries) => {
+        const w = Math.round(entries.at(-1).contentRect.width);
+        if (w === this._fitWidth) return;
+        this._fitWidth = w;
+        cancelAnimationFrame(this._fitFrame);
+        this._fitFrame = requestAnimationFrame(() => this._fitPill());
+      });
+      this._resize.observe(this);
+    }
+    document.fonts?.ready?.then(() => this._fitPill());
     // Relative times (« in 8 min », boarding, trains gone) follow the clock, not only the states.
     clearInterval(this._timer);
     this._timer = setInterval(() => this._tick(), 20000);
@@ -550,6 +570,8 @@ class TbBase extends HTMLElement {
     this._popupWatch?.off();
     clearInterval(this._timer);
     this._timer = null;
+    this._resize?.disconnect();
+    this._fitWidth = null;
     // Left (another view, a conditional card hidden): back to its default state, without its popup.
     this._popup = null;
     this._tab = null;
@@ -609,6 +631,28 @@ class TbBase extends HTMLElement {
     if (html !== this._html) {
       this._html = html;
       tbMorph(this.shadowRoot, html);
+    }
+    this._fitPill();
+  }
+
+  // The banner's status pill goes right after the title when its whole label fits there beside a title cut down to
+  // four characters; otherwise it takes a line of its own under the subtitle (.titles.below). Measured (in fractional
+  // pixels), so that a short title keeps its pill beside it whatever room the picture leaves.
+  _fitPill() {
+    for (const t of this.shadowRoot?.querySelectorAll?.(".titles") || []) {
+      // The full card's title row, else the mini card's time row (its pill in the « wide » span).
+      const chip = t.querySelector(".trow > .chip, .nt-time > .wide > .chip");
+      if (!chip?.getBoundingClientRect) continue;
+      t.classList.remove("below");
+      const row = chip.closest(".trow, .nt-time");
+      const name = row.firstElementChild;
+      const shown = name && name !== chip && getComputedStyle(name).display !== "none";
+      const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+      // The clock keeps its width; a title is cut down to four characters.
+      const title = !shown
+        ? 0
+        : (name.matches(".name") ? Math.min(name.scrollWidth, Math.max(parseFloat(getComputedStyle(name).minWidth) || 0, tbFourChars(name))) : name.getBoundingClientRect().width) + gap;
+      if (title + chip.getBoundingClientRect().width > row.getBoundingClientRect().width + 0.5) t.classList.add("below");
     }
   }
 
