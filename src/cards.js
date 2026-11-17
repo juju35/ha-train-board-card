@@ -358,7 +358,7 @@ const TB_BANNER_STYLE = `
 `;
 
 const TB_FULL_STYLE = `
-  .banner { --tb-banner-h: 112px; --tb-scene-w: 244px; }
+  .banner { --tb-banner-h: 90px; --tb-scene-w: 244px; }
   .tabs { display: flex; gap: 18px; padding: 0 12px; border-bottom: 1px solid var(--divider-color, rgba(127,127,127,.2)); }
   .tab { all: unset; cursor: pointer; padding: 9px 0 7px; font-size: 13px; font-weight: 500; color: var(--secondary-text-color);
          border-bottom: 2px solid transparent; margin-bottom: -1px; }
@@ -415,7 +415,7 @@ const TB_DIALOG_STYLE = `
 `;
 
 const TB_MINI_STYLE = `
-  .banner { --tb-banner-h: 100px; --tb-scene-w: 218px; }
+  .banner { --tb-banner-h: 90px; --tb-scene-w: 218px; }
   .htext .titles { gap: 1px; }
   .nt-time { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
   .nt-time b { font-size: 20px; font-weight: 700; line-height: 26px; font-variant-numeric: tabular-nums; white-space: nowrap; }
