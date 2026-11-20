@@ -35,6 +35,23 @@ const tbFmtLang = (hass, config) => {
   const loc = ha && ha.split("-")[0] === l.split("-")[0] && l !== "sr-Latn" ? ha : l;
   return loc === "pt" ? "pt-PT" : loc;
 };
+// The entities of a device (trafikverket_train / swiss_public_transport spread a board over several sensors),
+// memoised on the entity registry: the card's signature no longer walks every entity at each state change.
+const _tbDeviceMemo = new WeakMap();
+const tbDeviceEntities = (entities, device) => {
+  let byDevice = _tbDeviceMemo.get(entities);
+  if (!byDevice) {
+    byDevice = new Map();
+    for (const [eid, e] of Object.entries(entities)) {
+      if (!e?.device_id) continue;
+      if (!byDevice.has(e.device_id)) byDevice.set(e.device_id, []);
+      byDevice.get(e.device_id).push(eid);
+    }
+    _tbDeviceMemo.set(entities, byDevice);
+  }
+  return byDevice.get(device) || [];
+};
+
 const tbT = (hass, config, key) => TB_STRINGS[tbLang(hass, config)][key] ?? TB_STRINGS.en[key] ?? key;
 const tbFill = (text, vars) => String(text).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
 // « 1 train », « 3 trains », Polish « 5 pociągów »: the plural form of the card's language.
@@ -266,6 +283,9 @@ const tbMorph = (root, html) => {
   tbPatchChildren(root, tpl.content);
 };
 
+// A value inside a CSS attribute selector (a train key may hold a quote or a backslash).
+const tbCssEsc = (v) => (globalThis.CSS?.escape ? CSS.escape(String(v)) : String(v).replace(/["\\]/g, "\\$&"));
+
 // A click inside a dialog opened from the card (more-info…) is not a click outside the card.
 const tbInDialog = (ev) => ev.composedPath().some((n) => ["ha-more-info-dialog", "ha-dialog", "dialog"].includes(n.localName));
 
@@ -392,7 +412,7 @@ const TB_BANNER_STYLE = `
   /* The mini card's detail button: a 24 px frosted round button in the banner's top right corner. */
   .zoom { width: 24px; height: 24px; }
   .banner .zoom { position: absolute; z-index: 2; top: 5px; right: 5px; color: #33506b; background: rgba(255,255,255,.55);
-                  box-shadow: inset 0 0 0 1px rgba(255,255,255,.7); backdrop-filter: blur(4px); }
+                  box-shadow: inset 0 0 0 1px rgba(255,255,255,.7); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
   .banner .zoom:hover { background: rgba(255,255,255,.75); }
   .banner.night .zoom { color: #fff; background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
   .banner.night .zoom:hover { background: rgba(255,255,255,.22); }
@@ -565,6 +585,7 @@ class TbBase extends HTMLElement {
     clearInterval(this._timer);
     this._timer = setInterval(() => this._tick(), 20000);
     this._update();
+    this._fitPill();
   }
 
   disconnectedCallback() {
@@ -573,6 +594,7 @@ class TbBase extends HTMLElement {
     this._timer = null;
     this._resize?.disconnect();
     this._fitWidth = null;
+    if (this._fitFrame) cancelAnimationFrame(this._fitFrame);
     // Left (another view, a conditional card hidden): back to its default state, without its popup.
     this._popup = null;
     this._tab = null;
@@ -615,7 +637,7 @@ class TbBase extends HTMLElement {
       sig.push(h.states[id]);
       const device = h.entities?.[id]?.device_id;
       if (device && /^(trafikverket_train|swiss_public_transport)$/.test(h.entities[id].platform || ""))
-        for (const [eid, e] of Object.entries(h.entities)) if (e.device_id === device) sig.push(h.states[eid]);
+        for (const eid of tbDeviceEntities(h.entities, device)) sig.push(h.states[eid]);
     }
     return sig;
   }
@@ -629,10 +651,9 @@ class TbBase extends HTMLElement {
     if (!this._hass || !this._config) return;
     this._sig = sig ?? this._signature();
     const html = this._render();
-    if (html !== this._html) {
-      this._html = html;
-      tbMorph(this.shadowRoot, html);
-    }
+    if (html === this._html) return;
+    this._html = html;
+    tbMorph(this.shadowRoot, html);
     this._fitPill();
   }
 
@@ -643,6 +664,16 @@ class TbBase extends HTMLElement {
   // label in its tooltip and for screen readers). Measured after each render and on each new width, whatever the
   // language: no fixed width threshold.
   _fitPill() {
+    // Home Assistant's <ha-card> (a Lit element) shows its content only from its first update, a microtask after it
+    // is connected: measured before, everything is 0 px wide and the pill lands on the wrong line. Fitted then.
+    const haCard = this.shadowRoot?.querySelector?.("ha-card");
+    if (haCard && haCard.hasUpdated === false) {
+      this._pillWait ??= (haCard.updateComplete?.then ? haCard.updateComplete : new Promise((r) => requestAnimationFrame(r))).then(() => {
+        this._pillWait = null;
+        this._fitPill();
+      });
+      return;
+    }
     if (!this.isConnected) return;
     for (const t of this.shadowRoot?.querySelectorAll?.(".titles") || []) {
       // The full card's title row, else the mini card's time row (its pill in the « wide » span).
@@ -697,7 +728,7 @@ class TbBase extends HTMLElement {
     if (d.tab) {
       this._tab = d.tab;
       this._update();
-    } else if (d.train) this._openPopup({ train: d.train, tab: this._activeTab(tbBoard(this._hass, this._config)), opener: `[data-train="${d.train}"]` }, ev);
+    } else if (d.train) this._openPopup({ train: d.train, tab: this._activeTab(tbBoard(this._hass, this._config)), opener: `[data-train="${tbCssEsc(d.train)}"]` }, ev);
     else if (d.action === "notices") this._openPopup({ notices: true, opener: ".notice" }, ev);
   }
 
@@ -1041,6 +1072,20 @@ class TrainBoardMiniCard extends TrainBoardCard {
 
 const TB_TOGGLES = ["illustration", "show_departures", "show_arrivals", "show_platform", "show_train_number", "show_via", "hide_cancelled", "show_messages"];
 
+// The entity picker lists what the card can read: the sensors of a supported integration and those recognised by
+// their attributes only (template, REST). Scanning every state is memoised on the entity registry and the number of
+// states, so that the editor does not walk them at each state change.
+const _tbPickerMemo = new WeakMap();
+const tbPickerEntities = (hass) => {
+  const reg = hass?.entities || {};
+  const n = Object.keys(hass?.states || {}).length;
+  const hit = _tbPickerMemo.get(reg);
+  if (hit && hit.n === n) return hit.ids;
+  const ids = tbCandidates(hass);
+  _tbPickerMemo.set(reg, { n, ids });
+  return ids;
+};
+
 class TbEditorBase extends HTMLElement {
   static get extraToggles() {
     return [];
@@ -1062,7 +1107,12 @@ class TbEditorBase extends HTMLElement {
 
   _schema() {
     const tr = (k) => tbT(this._hass, this._config, k);
-    const entity = { entity: { filter: TB_ADAPTERS.map((a) => ({ integration: a.id, domain: "sensor" })) } };
+    const found = tbPickerEntities(this._hass);
+    // The configured entities stay selectable even when they are unavailable; with nothing found, the integration filter.
+    const ids = [...new Set([...found, this._config.entity, this._config.arrival_entity].filter(Boolean))];
+    const entity = ids.length
+      ? { entity: { domain: "sensor", include_entities: ids } }
+      : { entity: { filter: TB_ADAPTERS.map((a) => ({ integration: a.id, domain: "sensor" })) } };
     const select = (options) => ({ select: { mode: "dropdown", options } });
     return [
       { name: "entity", selector: entity },

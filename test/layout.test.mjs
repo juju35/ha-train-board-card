@@ -259,3 +259,135 @@ test("the mini card's detail button sits in the banner's top right corner: 24 px
   }
   await page.close();
 });
+
+// The page must not move under the card on a state change: another entity changes nothing in the card, a new delay
+// on its board patches the nodes in place (the scene and its train keep running) at a steady height.
+test("state updates: nothing changes for other entities, the card's own are patched in place at a steady height", async (t) => {
+  if (skip) return t.skip(skip);
+  const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
+  await page.clock.setFixedTime(new Date(CLOCK));
+  await page.setContent("<!doctype html><body style='margin:0'></body>");
+  await page.addScriptTag({ content: HA_CARD });
+  await page.addScriptTag({ content: src });
+  for (const type of ["train-board-card", "train-board-mini-card"]) {
+    const r = await page.evaluate(
+      async ({ hass, ENTITY, ARRIVALS_ENTITY, type }) => {
+        document.body.innerHTML = "<div style='width:400px'></div>";
+        const el = document.createElement(type);
+        el.setConfig({ type: `custom:${type}`, entity: ENTITY, arrival_entity: ARRIVALS_ENTITY });
+        el.hass = hass;
+        document.body.firstChild.appendChild(el);
+        const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        // Settled first: the web font and the resize observer's first notice fit the status pill once.
+        await document.fonts.ready;
+        await frames();
+        await new Promise((r) => setTimeout(r, 100));
+        await frames();
+        const scene = el.shadowRoot.querySelector(".tb-scene");
+        const h0 = el.getBoundingClientRect().height;
+        const muts = { other: 0, replaced: 0 };
+        let other = true;
+        const mo = new MutationObserver((list) => {
+          for (const m of list) {
+            if (other) muts.other++;
+            if (m.type === "childList") muts.replaced += m.removedNodes.length;
+          }
+        });
+        mo.observe(el.shadowRoot, { subtree: true, childList: true, attributes: true, characterData: true });
+        const heights = [];
+        let states = hass.states;
+        for (let i = 1; i <= 8; i++) {
+          other = true;
+          states = { ...states, "sensor.power": { entity_id: "sensor.power", state: String(i), attributes: {} } };
+          el.hass = { ...hass, states };
+          await frames();
+          other = false;
+          const s = states[ENTITY];
+          const next = s.attributes.next_departures.map((d, k) => (k < 2 ? { ...d, delay: i, departure_timestamp: d.scheduled_timestamp + i * 60 } : d));
+          states = { ...states, [ENTITY]: { ...s, attributes: { ...s.attributes, next_departures: next } } };
+          el.hass = { ...hass, states };
+          await frames();
+          heights.push(el.getBoundingClientRect().height - h0);
+        }
+        mo.disconnect();
+        return { ...muts, sameScene: el.shadowRoot.querySelector(".tb-scene") === scene, heights: [...new Set(heights)] };
+      },
+      { hass: boardHass(), ENTITY, ARRIVALS_ENTITY, type },
+    );
+    assert.equal(r.other, 0, `${type}: an update of another entity changed the card`);
+    assert.equal(r.replaced, 0, `${type}: nodes replaced`);
+    assert.equal(r.sameScene, true, `${type}: the scene was rebuilt`);
+    assert.deepEqual(r.heights, [0], `${type}: height changed`);
+  }
+  await page.close();
+});
+
+// Home Assistant's <ha-card> is a Lit element: it shows its content from its first update only, a microtask after it is
+// connected, so whatever the card measures before that is 0 px wide. With such a stand-in, the status pill must be in
+// its place (and the card at its height) from the first frame, and keep them through state updates.
+const LIT_HA_CARD = `customElements.define("ha-card", class extends HTMLElement {
+  constructor() { super(); this.attachShadow({ mode: "open" }).innerHTML = "<style>:host{display:block;overflow:hidden}</style>"; }
+  connectedCallback() {
+    if (this.updateComplete) return;
+    this.hasUpdated = false;
+    this.updateComplete = Promise.resolve().then(() => { this.shadowRoot.appendChild(document.createElement("slot")); this.hasUpdated = true; return true; });
+  }
+});`;
+
+for (const [type, config] of ["train-board-card", "train-board-mini-card"].flatMap((type) => [{}, { title: "Central Station departures and arrivals" }].map((c) => [type, { entity: ENTITY, arrival_entity: ARRIVALS_ENTITY, ...c }])))
+  for (const width of [300, 400])
+    test(`${type}${config.title ? " (long title)" : ""} at ${width} px in a Lit-like ha-card: the pill is placed from the first frame and stays`, async (t) => {
+      if (skip) return t.skip(skip);
+      const page = await browser.newPage({ viewport: { width: 1000, height: 1400 } });
+      const errors = [];
+      page.on("pageerror", (e) => errors.push(e.message));
+      await page.clock.setFixedTime(new Date(CLOCK));
+      await page.setContent("<!doctype html><body style='margin:0'></body>");
+      await page.addScriptTag({ content: LIT_HA_CARD });
+      await page.addScriptTag({ content: src });
+      const r = await page.evaluate(
+        async ({ type, config, width, hass }) => {
+          const frame = () => new Promise((done) => requestAnimationFrame(done));
+          const box = document.createElement("div");
+          box.style.width = `${width}px`;
+          document.body.appendChild(box);
+          const el = document.createElement(type);
+          el.setConfig({ type: `custom:${type}`, ...config });
+          el.hass = hass;
+          box.appendChild(el);
+          const look = () => `${Math.round(el.getBoundingClientRect().height)} ${[...el.shadowRoot.querySelectorAll(".titles")].map((n) => n.className).join("|")}`;
+          const first = new Set();
+          for (let k = 0; k < 6; k++) {
+            await frame();
+            first.add(look());
+          }
+          await new Promise((done) => setTimeout(done, 300));
+          await frame();
+          const settled = look();
+          const updates = new Set();
+          let h = hass;
+          for (let i = 1; i <= 8; i++) {
+            const states = { ...h.states };
+            if (i % 2) states["sensor.layout_probe"] = { entity_id: "sensor.layout_probe", state: String(i), attributes: {} };
+            else {
+              const id = Object.keys(states).find((k) => states[k].attributes?.next_departures);
+              const s = states[id];
+              const next = s.attributes.next_departures.map((d, k) => (k < 2 ? { ...d, delay: i, departure_timestamp: d.scheduled_timestamp + i * 60 } : d));
+              states[id] = { ...s, attributes: { ...s.attributes, next_departures: next } };
+
+            }
+            h = { ...h, states };
+            el.hass = h;
+            await frame();
+            await frame();
+            updates.add(look());
+          }
+          return { first: [...first], settled, updates: [...updates] };
+        },
+        { type, config, width, hass: boardHass() },
+      );
+      await page.close();
+      assert.deepEqual(errors, []);
+      assert.deepEqual(r.first, [r.settled], "the first frames show the pill where it settles, at the same height");
+      assert.deepEqual(r.updates, [r.settled], "state updates keep the pill's place and the height");
+    });

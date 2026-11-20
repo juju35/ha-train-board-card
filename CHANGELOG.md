@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.2 - 2026-11-20
+
+### Fixes
+- The status pill is placed from the card's first frame: it was measured before Home Assistant's `<ha-card>` had laid out its content (0 px wide), so for a frame it showed on the wrong line (under the title, or beside it when it belongs under it), sometimes changing the card's height, before jumping to its place. It is now fitted once the card is drawn.
+- The frosted expand / collapse button of the illustrated header keeps its blur on Safari before 18 (WebKit prefix).
+- Closing a train's popup no longer throws when the train's key holds a quote or a backslash (the selector that gives the focus back to its row is escaped).
+- Visual editor: the entity picker also lists the sensors the card recognises by their attributes only (template, REST), not only those of a supported integration; the configured entities stay listed.
+- The card's update check no longer walks every entity of Home Assistant at each state change for Trafikverket and Swiss public transport boards (the device's sensors are memoised on the entity registry).
+
+### Performance
+- The status pill is measured again only when the card changed (or its width), no longer on every Home Assistant update.
+
+### Maintenance
+- Tests: the coverage of the card sources is now measured (`node --test --experimental-test-coverage`).
+
 ## 1.4.1 - 2026-11-18
 
 ### Fixes

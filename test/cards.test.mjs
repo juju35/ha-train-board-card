@@ -256,6 +256,23 @@ test("the editors: ha-form with every option, minimal YAML, the mini card adds i
   assert.match(JSON.stringify(mini._form.schema), /"name":"zoom"/);
 });
 
+test("the editors' entity picker lists the sensors found by their attributes too (template, REST)", () => {
+  const h = fx.dbInfoscreen();
+  // The same sensor without a registry entry: recognised by its attributes only.
+  h.entities = Object.fromEntries(Object.entries(h.entities || {}).filter(([id]) => id !== DEP));
+  const ed = new (tb.registry.get("train-board-card-editor"))();
+  ed.setConfig({ type: "custom:train-board-card" });
+  ed.hass = h;
+  const picker = ed._form.schema.find((x) => x.name === "entity").selector.entity;
+  assert.ok(picker.include_entities.includes(DEP));
+  assert.equal(picker.domain, "sensor");
+  // Nothing found: back to the integration filter.
+  const empty = new (tb.registry.get("train-board-card-editor"))();
+  empty.setConfig({ type: "custom:train-board-card" });
+  empty.hass = { states: {}, entities: {}, language: "en" };
+  assert.ok(empty._form.schema.find((x) => x.name === "entity").selector.entity.filter.length > 0);
+});
+
 test("stub configuration: the first entity of a supported integration; registration in the card picker", () => {
   assert.deepEqual({ ...tb.cards.full.getStubConfig(fx.dbInfoscreen()) }, { entity: DEP });
   assert.deepEqual({ ...tb.cards.full.getStubConfig({ states: {} }) }, {});
@@ -335,4 +352,12 @@ test("the header's status pill: a cancelled train is a disruption, else delays, 
   const [, cls, label] = h.match(/<div class="trow"><div class="name">[^<]*<\/div><span class="chip hpill (\w+)" title="([^"]+)">/);
   assert.match(h, new RegExp(`<div class="logo ${cls}"`));
   assert.ok(["À l’heure", "Retards", "Perturbations", "Prévu", "Aucun train"].includes(label), label);
+});
+
+test("the popup's opener selector escapes a train key holding a quote or a backslash", () => {
+  const card = mount("train-board-card", { entity: DEP });
+  click(card, { train: 'a"b\\c' });
+  assert.equal(card._popup.opener, '[data-train="a\\"b\\\\c"]');
+  tb.sandbox.fire("keydown", { key: "Escape", stopPropagation() {} });
+  assert.equal(card._popup, null);
 });
