@@ -392,7 +392,7 @@ const TB_BANNER_STYLE = `
   /* The mini card's detail button: a 24 px frosted round button in the banner's top right corner. */
   .zoom { width: 24px; height: 24px; }
   .banner .zoom { position: absolute; z-index: 2; top: 5px; right: 5px; color: #33506b; background: rgba(255,255,255,.55);
-                  box-shadow: inset 0 0 0 1px rgba(255,255,255,.7); backdrop-filter: blur(4px); }
+                  box-shadow: inset 0 0 0 1px rgba(255,255,255,.7); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
   .banner .zoom:hover { background: rgba(255,255,255,.75); }
   .banner.night .zoom { color: #fff; background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
   .banner.night .zoom:hover { background: rgba(255,255,255,.22); }
