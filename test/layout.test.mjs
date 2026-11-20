@@ -278,6 +278,10 @@ test("state updates: nothing changes for other entities, the card's own are patc
         el.hass = hass;
         document.body.firstChild.appendChild(el);
         const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        // Settled first: the web font and the resize observer's first notice fit the status pill once.
+        await document.fonts.ready;
+        await frames();
+        await new Promise((r) => setTimeout(r, 100));
         await frames();
         const scene = el.shadowRoot.querySelector(".tb-scene");
         const h0 = el.getBoundingClientRect().height;
