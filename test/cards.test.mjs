@@ -256,6 +256,23 @@ test("the editors: ha-form with every option, minimal YAML, the mini card adds i
   assert.match(JSON.stringify(mini._form.schema), /"name":"zoom"/);
 });
 
+test("the editors' entity picker lists the sensors found by their attributes too (template, REST)", () => {
+  const h = fx.dbInfoscreen();
+  // The same sensor without a registry entry: recognised by its attributes only.
+  h.entities = Object.fromEntries(Object.entries(h.entities || {}).filter(([id]) => id !== DEP));
+  const ed = new (tb.registry.get("train-board-card-editor"))();
+  ed.setConfig({ type: "custom:train-board-card" });
+  ed.hass = h;
+  const picker = ed._form.schema.find((x) => x.name === "entity").selector.entity;
+  assert.ok(picker.include_entities.includes(DEP));
+  assert.equal(picker.domain, "sensor");
+  // Nothing found: back to the integration filter.
+  const empty = new (tb.registry.get("train-board-card-editor"))();
+  empty.setConfig({ type: "custom:train-board-card" });
+  empty.hass = { states: {}, entities: {}, language: "en" };
+  assert.ok(empty._form.schema.find((x) => x.name === "entity").selector.entity.filter.length > 0);
+});
+
 test("stub configuration: the first entity of a supported integration; registration in the card picker", () => {
   assert.deepEqual({ ...tb.cards.full.getStubConfig(fx.dbInfoscreen()) }, { entity: DEP });
   assert.deepEqual({ ...tb.cards.full.getStubConfig({ states: {} }) }, {});

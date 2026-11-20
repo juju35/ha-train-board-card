@@ -1072,6 +1072,20 @@ class TrainBoardMiniCard extends TrainBoardCard {
 
 const TB_TOGGLES = ["illustration", "show_departures", "show_arrivals", "show_platform", "show_train_number", "show_via", "hide_cancelled", "show_messages"];
 
+// The entity picker lists what the card can read: the sensors of a supported integration and those recognised by
+// their attributes only (template, REST). Scanning every state is memoised on the entity registry and the number of
+// states, so that the editor does not walk them at each state change.
+const _tbPickerMemo = new WeakMap();
+const tbPickerEntities = (hass) => {
+  const reg = hass?.entities || {};
+  const n = Object.keys(hass?.states || {}).length;
+  const hit = _tbPickerMemo.get(reg);
+  if (hit && hit.n === n) return hit.ids;
+  const ids = tbCandidates(hass);
+  _tbPickerMemo.set(reg, { n, ids });
+  return ids;
+};
+
 class TbEditorBase extends HTMLElement {
   static get extraToggles() {
     return [];
@@ -1093,7 +1107,12 @@ class TbEditorBase extends HTMLElement {
 
   _schema() {
     const tr = (k) => tbT(this._hass, this._config, k);
-    const entity = { entity: { filter: TB_ADAPTERS.map((a) => ({ integration: a.id, domain: "sensor" })) } };
+    const found = tbPickerEntities(this._hass);
+    // The configured entities stay selectable even when they are unavailable; with nothing found, the integration filter.
+    const ids = [...new Set([...found, this._config.entity, this._config.arrival_entity].filter(Boolean))];
+    const entity = ids.length
+      ? { entity: { domain: "sensor", include_entities: ids } }
+      : { entity: { filter: TB_ADAPTERS.map((a) => ({ integration: a.id, domain: "sensor" })) } };
     const select = (options) => ({ select: { mode: "dropdown", options } });
     return [
       { name: "entity", selector: entity },
