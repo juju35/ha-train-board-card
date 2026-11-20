@@ -259,3 +259,61 @@ test("the mini card's detail button sits in the banner's top right corner: 24 px
   }
   await page.close();
 });
+
+// The page must not move under the card on a state change: another entity changes nothing in the card, a new delay
+// on its board patches the nodes in place (the scene and its train keep running) at a steady height.
+test("state updates: nothing changes for other entities, the card's own are patched in place at a steady height", async (t) => {
+  if (skip) return t.skip(skip);
+  const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
+  await page.clock.setFixedTime(new Date(CLOCK));
+  await page.setContent("<!doctype html><body style='margin:0'></body>");
+  await page.addScriptTag({ content: HA_CARD });
+  await page.addScriptTag({ content: src });
+  for (const type of ["train-board-card", "train-board-mini-card"]) {
+    const r = await page.evaluate(
+      async ({ hass, ENTITY, ARRIVALS_ENTITY, type }) => {
+        document.body.innerHTML = "<div style='width:400px'></div>";
+        const el = document.createElement(type);
+        el.setConfig({ type: `custom:${type}`, entity: ENTITY, arrival_entity: ARRIVALS_ENTITY });
+        el.hass = hass;
+        document.body.firstChild.appendChild(el);
+        const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        await frames();
+        const scene = el.shadowRoot.querySelector(".tb-scene");
+        const h0 = el.getBoundingClientRect().height;
+        const muts = { other: 0, replaced: 0 };
+        let other = true;
+        const mo = new MutationObserver((list) => {
+          for (const m of list) {
+            if (other) muts.other++;
+            if (m.type === "childList") muts.replaced += m.removedNodes.length;
+          }
+        });
+        mo.observe(el.shadowRoot, { subtree: true, childList: true, attributes: true, characterData: true });
+        const heights = [];
+        let states = hass.states;
+        for (let i = 1; i <= 8; i++) {
+          other = true;
+          states = { ...states, "sensor.power": { entity_id: "sensor.power", state: String(i), attributes: {} } };
+          el.hass = { ...hass, states };
+          await frames();
+          other = false;
+          const s = states[ENTITY];
+          const next = s.attributes.next_departures.map((d, k) => (k < 2 ? { ...d, delay: i, departure_timestamp: d.scheduled_timestamp + i * 60 } : d));
+          states = { ...states, [ENTITY]: { ...s, attributes: { ...s.attributes, next_departures: next } } };
+          el.hass = { ...hass, states };
+          await frames();
+          heights.push(el.getBoundingClientRect().height - h0);
+        }
+        mo.disconnect();
+        return { ...muts, sameScene: el.shadowRoot.querySelector(".tb-scene") === scene, heights: [...new Set(heights)] };
+      },
+      { hass: boardHass(), ENTITY, ARRIVALS_ENTITY, type },
+    );
+    assert.equal(r.other, 0, `${type}: an update of another entity changed the card`);
+    assert.equal(r.replaced, 0, `${type}: nodes replaced`);
+    assert.equal(r.sameScene, true, `${type}: the scene was rebuilt`);
+    assert.deepEqual(r.heights, [0], `${type}: height changed`);
+  }
+  await page.close();
+});
