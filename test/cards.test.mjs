@@ -336,3 +336,11 @@ test("the header's status pill: a cancelled train is a disruption, else delays, 
   assert.match(h, new RegExp(`<div class="logo ${cls}"`));
   assert.ok(["À l’heure", "Retards", "Perturbations", "Prévu", "Aucun train"].includes(label), label);
 });
+
+test("the popup's opener selector escapes a train key holding a quote or a backslash", () => {
+  const card = mount("train-board-card", { entity: DEP });
+  click(card, { train: 'a"b\\c' });
+  assert.equal(card._popup.opener, '[data-train="a\\"b\\\\c"]');
+  tb.sandbox.fire("keydown", { key: "Escape", stopPropagation() {} });
+  assert.equal(card._popup, null);
+});

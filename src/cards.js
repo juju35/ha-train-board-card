@@ -266,6 +266,9 @@ const tbMorph = (root, html) => {
   tbPatchChildren(root, tpl.content);
 };
 
+// A value inside a CSS attribute selector (a train key may hold a quote or a backslash).
+const tbCssEsc = (v) => (globalThis.CSS?.escape ? CSS.escape(String(v)) : String(v).replace(/["\\]/g, "\\$&"));
+
 // A click inside a dialog opened from the card (more-info…) is not a click outside the card.
 const tbInDialog = (ev) => ev.composedPath().some((n) => ["ha-more-info-dialog", "ha-dialog", "dialog"].includes(n.localName));
 
@@ -697,7 +700,7 @@ class TbBase extends HTMLElement {
     if (d.tab) {
       this._tab = d.tab;
       this._update();
-    } else if (d.train) this._openPopup({ train: d.train, tab: this._activeTab(tbBoard(this._hass, this._config)), opener: `[data-train="${d.train}"]` }, ev);
+    } else if (d.train) this._openPopup({ train: d.train, tab: this._activeTab(tbBoard(this._hass, this._config)), opener: `[data-train="${tbCssEsc(d.train)}"]` }, ev);
     else if (d.action === "notices") this._openPopup({ notices: true, opener: ".notice" }, ev);
   }
 
