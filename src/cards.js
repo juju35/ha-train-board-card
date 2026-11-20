@@ -568,6 +568,7 @@ class TbBase extends HTMLElement {
     clearInterval(this._timer);
     this._timer = setInterval(() => this._tick(), 20000);
     this._update();
+    this._fitPill();
   }
 
   disconnectedCallback() {
@@ -576,6 +577,7 @@ class TbBase extends HTMLElement {
     this._timer = null;
     this._resize?.disconnect();
     this._fitWidth = null;
+    if (this._fitFrame) cancelAnimationFrame(this._fitFrame);
     // Left (another view, a conditional card hidden): back to its default state, without its popup.
     this._popup = null;
     this._tab = null;
@@ -632,10 +634,9 @@ class TbBase extends HTMLElement {
     if (!this._hass || !this._config) return;
     this._sig = sig ?? this._signature();
     const html = this._render();
-    if (html !== this._html) {
-      this._html = html;
-      tbMorph(this.shadowRoot, html);
-    }
+    if (html === this._html) return;
+    this._html = html;
+    tbMorph(this.shadowRoot, html);
     this._fitPill();
   }
 
