@@ -647,6 +647,16 @@ class TbBase extends HTMLElement {
   // label in its tooltip and for screen readers). Measured after each render and on each new width, whatever the
   // language: no fixed width threshold.
   _fitPill() {
+    // Home Assistant's <ha-card> (a Lit element) shows its content only from its first update, a microtask after it
+    // is connected: measured before, everything is 0 px wide and the pill lands on the wrong line. Fitted then.
+    const haCard = this.shadowRoot?.querySelector?.("ha-card");
+    if (haCard && haCard.hasUpdated === false) {
+      this._pillWait ??= (haCard.updateComplete?.then ? haCard.updateComplete : new Promise((r) => requestAnimationFrame(r))).then(() => {
+        this._pillWait = null;
+        this._fitPill();
+      });
+      return;
+    }
     if (!this.isConnected) return;
     for (const t of this.shadowRoot?.querySelectorAll?.(".titles") || []) {
       // The full card's title row, else the mini card's time row (its pill in the « wide » span).
