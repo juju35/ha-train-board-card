@@ -89,9 +89,12 @@ export const load = ({ now } = {}) => {
   sandbox.fire = (type, ev) => {
     for (const fn of winListeners[type] || []) fn(ev);
   };
-  const code = `{\n${SOURCES.map(read).join("\n")}\n;globalThis.__tb = { TB_STRINGS, TB_ADAPTERS, tbRead, tbBoard, tbStatus, tbBoardStatus, tbTime, tbSplitTrain, tbFamily, tbColor, tbIsNight,
-    tbPlural, tbClock, tbCandidates, tbAdapterFor, tbFilter, tbOnTime, tbSceneSvg, TB_DEFAULTS };\n}`;
+  // Each source runs as its own script, named after its file (top-level declarations are shared between the scripts
+  // of one context, as in the block of the bundle), so that --experimental-test-coverage reports src/*.js.
   vm.createContext(sandbox);
+  for (const name of SOURCES) vm.runInContext(read(name), sandbox, { filename: `${root}src/${name}.js` });
+  const code = `globalThis.__tb = { TB_STRINGS, TB_ADAPTERS, tbRead, tbBoard, tbStatus, tbBoardStatus, tbTime, tbSplitTrain, tbFamily, tbColor, tbIsNight,
+    tbPlural, tbClock, tbCandidates, tbAdapterFor, tbFilter, tbOnTime, tbSceneSvg, TB_DEFAULTS };`;
   vm.runInContext(code, sandbox);
   return { ...sandbox.__tb, registry, sandbox, cards: { full: registry.get("train-board-card"), mini: registry.get("train-board-mini-card") } };
 };
