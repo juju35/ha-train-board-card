@@ -35,6 +35,23 @@ const tbFmtLang = (hass, config) => {
   const loc = ha && ha.split("-")[0] === l.split("-")[0] && l !== "sr-Latn" ? ha : l;
   return loc === "pt" ? "pt-PT" : loc;
 };
+// The entities of a device (trafikverket_train / swiss_public_transport spread a board over several sensors),
+// memoised on the entity registry: the card's signature no longer walks every entity at each state change.
+const _tbDeviceMemo = new WeakMap();
+const tbDeviceEntities = (entities, device) => {
+  let byDevice = _tbDeviceMemo.get(entities);
+  if (!byDevice) {
+    byDevice = new Map();
+    for (const [eid, e] of Object.entries(entities)) {
+      if (!e?.device_id) continue;
+      if (!byDevice.has(e.device_id)) byDevice.set(e.device_id, []);
+      byDevice.get(e.device_id).push(eid);
+    }
+    _tbDeviceMemo.set(entities, byDevice);
+  }
+  return byDevice.get(device) || [];
+};
+
 const tbT = (hass, config, key) => TB_STRINGS[tbLang(hass, config)][key] ?? TB_STRINGS.en[key] ?? key;
 const tbFill = (text, vars) => String(text).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
 // « 1 train », « 3 trains », Polish « 5 pociągów »: the plural form of the card's language.
@@ -620,7 +637,7 @@ class TbBase extends HTMLElement {
       sig.push(h.states[id]);
       const device = h.entities?.[id]?.device_id;
       if (device && /^(trafikverket_train|swiss_public_transport)$/.test(h.entities[id].platform || ""))
-        for (const [eid, e] of Object.entries(h.entities)) if (e.device_id === device) sig.push(h.states[eid]);
+        for (const eid of tbDeviceEntities(h.entities, device)) sig.push(h.states[eid]);
     }
     return sig;
   }
