@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.2 - 2026-11-20
+
+### Fixes
+- The frosted expand / collapse button of the illustrated header keeps its blur on Safari before 18 (WebKit prefix).
+- Closing a train's popup no longer throws when the train's key holds a quote or a backslash (the selector that gives the focus back to its row is escaped).
+
+### Performance
+- The status pill is measured again only when the card changed (or its width), no longer on every Home Assistant update.
+
+### Maintenance
+- Tests: the coverage of the card sources is now measured (`node --test --experimental-test-coverage`).
+
 ## 1.4.1 - 2026-11-18
 
 ### Fixes
