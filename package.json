@@ -1,6 +1,6 @@
 {
   "name": "ha-train-board-card",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "Animated station departures and arrivals board card for Home Assistant, with a compact mini card: DB Infoscreen, National Rail, Swiss Transport, Public Transport, NS, Trafikverket and more.",
   "repository": {
     "type": "git",

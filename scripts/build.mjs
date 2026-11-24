@@ -6,10 +6,11 @@ import { fileURLToPath } from "node:url";
 import { splitDist } from "./i18n-split.mjs";
 import { withLogos } from "./brand-logos.mjs";
 import { SOURCES } from "./sources.mjs";
+import { sourceOf } from "./bundle.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const pkg = JSON.parse(readFileSync(`${root}package.json`, "utf8"));
-const src = (name) => withLogos(readFileSync(`${root}src/${name}.js`, "utf8").replaceAll("__VERSION__", pkg.version), root);
+const src = (name) => withLogos(sourceOf(name).replaceAll("__VERSION__", pkg.version), root);
 
 const out = [`/*! ha-train-board-card v${pkg.version} — https://github.com/juju35/ha-train-board-card */`, "{", ...SOURCES.map(src), "}", ""].join("\n");
 

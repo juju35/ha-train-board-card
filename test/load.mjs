@@ -7,9 +7,10 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { withLogos } from "../scripts/brand-logos.mjs";
 import { SOURCES } from "../scripts/sources.mjs";
+import { sources } from "./source.mjs";
 
 const root = new URL("../", import.meta.url).pathname;
-const read = (name) => withLogos(readFileSync(new URL(`../src/${name}.js`, import.meta.url), "utf8"), root);
+const read = (name) => withLogos((sources[`${name}.js`] ?? readFileSync(new URL(`../src/${name}.js`, import.meta.url), "utf8")), root);
 
 export const load = ({ now } = {}) => {
   const registry = new Map();
