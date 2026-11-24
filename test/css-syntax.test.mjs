@@ -1,10 +1,11 @@
 // The cards' CSS, written in JavaScript strings, read back with a CSS parser: a broken rule (a dangling line, a
 // missing brace) is silently dropped by the browser, with the rule after it.
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { test } from "node:test";
 import * as acorn from "acorn";
 import * as csstree from "css-tree";
+import { readSrc } from "./source.mjs";
 
 const SRC = new URL("../src/", import.meta.url);
 const files = readdirSync(SRC)
@@ -66,7 +67,7 @@ test("every style sheet of the cards parses without error", () => {
   const errors = [];
   let count = 0;
   for (const file of files) {
-    const source = readFileSync(file, "utf8");
+    const source = readSrc(file);
     for (const { text, line } of sheets(source)) {
       count++;
       csstree.parse(text, {

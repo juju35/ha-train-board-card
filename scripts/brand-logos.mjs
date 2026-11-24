@@ -3,7 +3,7 @@
 // exists (no network at run time). A brand without any file simply gets no badge.
 import { existsSync, readFileSync } from "node:fs";
 
-// The marker in src/cards.js replaced by the logos.
+// The marker in the bundled card source (test/source.mjs) replaced by the logos.
 export const MARKER = "{} /* __BRAND_LOGOS__ */";
 
 export const brandLogos = (root) => {

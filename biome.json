@@ -16,7 +16,7 @@
   "javascript": { "globals": ["customElements", "HTMLElement", "hass"] },
   "overrides": [
     {
-      "includes": ["src/i18n.js", "src/adapters.js", "src/scene.js"],
+      "includes": ["src/i18n/**", "src/adapters.js", "src/scene.js"],
       "linter": { "rules": { "correctness": { "noUnusedVariables": "off" } } }
     }
   ]
