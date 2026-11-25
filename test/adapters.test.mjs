@@ -12,9 +12,9 @@ const read = (hass, id, kind = "departure") => tb.tbRead(hass, id, { kind, now: 
 const pick = (t, keys) => JSON.parse(JSON.stringify(Object.fromEntries(keys.map((k) => [k, t[k]]))));
 
 test("every adapter has an id, a name, a link and both functions", () => {
-  assert.equal(tb.TB_ADAPTERS.length, 12);
+  assert.equal(tb.TB_ADAPTERS.length, 13);
   for (const a of tb.TB_ADAPTERS) {
-    assert.match(a.id, /^[a-z_]+$/);
+    assert.match(a.id, /^[a-z][a-z0-9_]*$/);
     assert.ok(a.name && /^https:\/\//.test(a.url), a.id);
     assert.equal(typeof a.detect, "function");
     assert.equal(typeof a.read, "function");
@@ -272,6 +272,38 @@ test("Train Traveler: journeys, delays in seconds, disruptions, families from th
   assert.deepEqual(pick(tgv, ["type", "family"]), { type: "TGV INOUI", family: "high_speed" });
 });
 
+test("GTFS2: the route's next departures, headsigns, train number, GTFS-RT expected times and stop alerts", () => {
+  const r = read(fx.gtfs2(), "sensor.ter_rennes_to_nantes_next_departure");
+  assert.equal(r.adapter.id, "gtfs2");
+  assert.equal(r.station, "Rennes");
+  assert.equal(r.brand, "sncf");
+  const [a, b, c] = r.trains;
+  assert.deepEqual(pick(a, ["type", "number", "place", "family", "realtime", "delay", "platform"]), {
+    type: "TER",
+    number: "858412",
+    place: "Nantes",
+    family: "regional",
+    realtime: true,
+    delay: 7,
+    platform: "",
+  });
+  assert.deepEqual(pick(b, ["number", "place", "realtime", "delay"]), { number: "", place: "Savenay", realtime: true, delay: 0 });
+  assert.deepEqual(pick(c, ["realtime", "expected"]), { realtime: false, expected: null });
+  assert.equal(a.stops[0].name, "Nantes");
+  assert.equal(a.stops[0].time, min(80));
+  assert.deepEqual([...r.messages], ["Works between Redon and Nantes"]);
+  // Without a real-time feed (« - »), the timetable alone; another agency, no badge.
+  const h = fx.gtfs2();
+  Object.assign(h.states["sensor.ter_rennes_to_nantes_next_departure"].attributes, { next_departures_realtime: "-", attribution: "STAR" });
+  const t = read(h, "sensor.ter_rennes_to_nantes_next_departure");
+  assert.ok(t.trains.every((x) => !x.realtime));
+  assert.equal(t.brand, "");
+  // In arrival mode: arrival times, from the origin.
+  const arr = tb.tbRead(fx.gtfs2(), "sensor.ter_rennes_to_nantes_next_departure", { kind: "arrival", now: NOW });
+  assert.equal(arr.station, "Nantes");
+  assert.deepEqual(pick(arr.trains[0], ["scheduled", "place"]), { scheduled: min(80), place: "Rennes" });
+});
+
 test("detection without the entity registry, from the attributes alone", () => {
   const cases = [
     [fx.dbInfoscreen(), "sensor.koln_hbf_departures", "db_infoscreen"],
@@ -284,6 +316,7 @@ test("detection without the entity registry, from the attributes alone", () => {
     [fx.nmbs(), "sensor.trains_in_gent_sint_pieters", "nmbs"],
     [fx.ukTransport(), "sensor.next_train_to_wat", "uk_transport"],
     [fx.trainTraveler(), "sensor.train_traveler_ren_nan_journeys", "train_traveler"],
+    [fx.gtfs2(), "sensor.ter_rennes_to_nantes_next_departure", "gtfs2"],
     [fx.trafikverket(), "sensor.stockholm_c_uppsala_c_departure_time", "trafikverket_train"],
     [fx.swissPublicTransport(), "sensor.zurich_hb_luzern_departure", "swiss_public_transport"],
   ];

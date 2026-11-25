@@ -280,7 +280,7 @@ export class TbBase extends HTMLElement {
   // The brand's logo in a badge on the header icon: the operator of the detected integration (`brand` in YAML picks
   // another one), only when its logo is in the bundle.
   _badge(board) {
-    const slug = this._config.brand || board.adapter?.brand;
+    const slug = this._config.brand || board.brand || board.adapter?.brand;
     const logo = slug && TB_BRAND_LOGOS[slug];
     return logo ? `<span class="badge" title="${tbEsc(board.adapter?.name || "")}"><img src="${tbEsc(logo)}" alt=""></span>` : "";
   }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0 - 2026-11-25
+
+### Features
+- **GTFS2** support ([vingerha/gtfs2](https://github.com/vingerha/gtfs2)): the route sensor of any GTFS feed — e.g. SNCF's open data, which needs no token now that the free Navitia access is gone. The next departures with their headsign, route short name and arrival time, the train number of the next one, the GTFS-RT expected times (status pills and delays) when the real-time feed is set, and the stop alerts; the platform column stays hidden (a GTFS timetable has none). A route sensor also works as `arrival_entity`. Detected automatically, or forced with `integration: gtfs2` (also in the visual editor); the SNCF badge when the feed's agency is SNCF. Train Traveler is unchanged. Closes #26.
+
+### Fixes
+- Detection: an entity whose `next_departures` holds plain times (GTFS2) no longer stops the detection of the other integrations with an error.
+
 ## 1.4.5 - 2026-11-24
 
 ### Maintenance
