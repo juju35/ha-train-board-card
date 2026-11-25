@@ -298,6 +298,24 @@ test("GTFS2: the route's next departures, headsigns, train number, GTFS-RT expec
   const t = read(h, "sensor.ter_rennes_to_nantes_next_departure");
   assert.ok(t.trains.every((x) => !x.realtime));
   assert.equal(t.brand, "");
+  // A train without real-time data does not take the expected time of the next one (its gap is no given delay).
+  const gap = fx.gtfs2();
+  Object.assign(gap.states["sensor.ter_rennes_to_nantes_next_departure"].attributes, {
+    next_departures_realtime: [new Date(min(35)).toISOString()],
+    next_delays_realtime: [0],
+  });
+  const g = read(gap, "sensor.ter_rennes_to_nantes_next_departure").trains;
+  assert.deepEqual(
+    g.map((x) => x.realtime),
+    [false, true, false],
+  );
+  assert.equal(g[1].delay, 0);
+  // The badge: SNCF's brands, not a name that merely holds « ter ».
+  for (const [agency, brand] of [["TER Bretagne", "sncf"], ["OUIGO", "sncf"], ["Westerwaldbahn", ""], ["STAR", ""]]) {
+    const b = fx.gtfs2();
+    b.states["sensor.ter_rennes_to_nantes_next_departure"].attributes.attribution = agency;
+    assert.equal(read(b, "sensor.ter_rennes_to_nantes_next_departure").brand, brand, agency);
+  }
   // In arrival mode: arrival times, from the origin.
   const arr = tb.tbRead(fx.gtfs2(), "sensor.ter_rennes_to_nantes_next_departure", { kind: "arrival", now: NOW });
   assert.equal(arr.station, "Nantes");

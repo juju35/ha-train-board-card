@@ -594,7 +594,11 @@ const TB_ADAPTERS = [
     name: "GTFS2",
     url: "https://github.com/vingerha/gtfs2",
     // The badge follows the agency of the feed (the sensor's attribution): SNCF's for the SNCF feeds, else none.
-    brandOf: (s) => (/\b(sncf|ter|ouigo|intercit[ée]s|tgv)\b/i.test(tbStr(tbAttr(s, "attribution"))) ? "sncf" : ""),
+    brandOf: (s) => {
+      const agency = tbStr(tbAttr(s, "attribution"));
+      // SNCF or OUIGO anywhere, or a name that starts with one of SNCF's brands (« TER Bretagne », « TGV INOUI »).
+      return /\b(sncf|ouigo)\b/i.test(agency) || /^(ter|tgv|intercit[ée]s)\b/i.test(agency) ? "sncf" : "";
+    },
     detect: (s) => Array.isArray(tbAttr(s, "next_departures")) && Array.isArray(tbAttr(s, "next_departures_headsign")),
     read(s, _hass, { kind, now }) {
       const a = s.attributes;
@@ -624,12 +628,16 @@ const TB_ADAPTERS = [
                 ? "regional"
                 : "";
       // GTFS-RT: the expected times of the route at the stop, sorted, and their delays (seconds) in another order;
-      // each scheduled train takes the first unused expected time from a minute before it to 90 minutes after.
+      // each scheduled train takes the first unused expected time from a minute before it to 90 minutes after whose
+      // gap to it is one of the delays given (within a minute): the expected time of the next train is not taken for
+      // one without real-time data.
       const rt = Array.isArray(a.next_departures_realtime) ? a.next_departures_realtime.map((v) => tbTime(v, now)).filter((v) => v !== null) : null;
+      const delays = Array.isArray(a.next_delays_realtime) ? a.next_delays_realtime.map(tbNum).filter((v) => v !== null) : null;
       const used = new Set();
+      const fits = (gap) => !delays?.length || delays.some((d) => Math.abs(gap / 1000 - d) <= 60);
       const realtime = (scheduled) => {
         if (!rt || scheduled === null) return null;
-        const i = rt.findIndex((e, j) => !used.has(j) && e >= scheduled - 60000 && e <= scheduled + 90 * 60000);
+        const i = rt.findIndex((e, j) => !used.has(j) && e >= scheduled - 60000 && e <= scheduled + 90 * 60000 && fits(e - scheduled));
         if (i < 0) return null;
         used.add(i);
         return rt[i];
