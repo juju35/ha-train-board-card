@@ -73,7 +73,7 @@ export const tbBoard = (hass, config, now = Date.now()) => {
   };
   // A board without its departures tab (show_departures: false) and without arrivals still shows the departures.
   if (!tabs.departures && !tabs.arrivals) tabs.departures = tab(dep, "departure", true);
-  return { station: dep.station, adapter: dep.adapter, tabs, messages: [...dep.messages, ...(arr?.messages || [])] };
+  return { station: dep.station, adapter: dep.adapter, brand: dep.brand, tabs, messages: [...dep.messages, ...(arr?.messages || [])] };
 };
 
 // Status of a train: { cls, text } — cancelled, delayed (« +12 min »), boarding / arrived, on time; null for a

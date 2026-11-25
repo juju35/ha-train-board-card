@@ -363,7 +363,7 @@ const TB_ADAPTERS = [
     brand: "public-transport",
     name: "Public Transport",
     url: "https://github.com/juju35/ha-public-transport",
-    detect: (s) => [...tbList(tbAttr(s, "departures")), ...tbList(tbAttr(s, "next_departures"))].some((d) => d && "line_id" in d),
+    detect: (s) => [...tbList(tbAttr(s, "departures")), ...tbList(tbAttr(s, "next_departures"))].some((d) => d && typeof d === "object" && "line_id" in d),
     read(s, _hass, { now }) {
       const a = s.attributes;
       const trains = tbList(a.departures ?? a.next_departures).map((d) =>
@@ -587,6 +587,88 @@ const TB_ADAPTERS = [
       return { station: tbStr(list[0]?.departure), trains, messages: [] };
     },
   },
+  {
+    // vingerha/gtfs2 (gtfs2): a route sensor (start stop → end stop) from a GTFS timetable, with the next departures,
+    // and the GTFS-RT expected times when a real-time feed is set. Works with any GTFS feed (SNCF open data…).
+    id: "gtfs2",
+    name: "GTFS2",
+    url: "https://github.com/vingerha/gtfs2",
+    // The badge follows the agency of the feed (the sensor's attribution): SNCF's for the SNCF feeds, else none.
+    brandOf: (s) => {
+      const agency = tbStr(tbAttr(s, "attribution"));
+      // SNCF or OUIGO anywhere, or a name that starts with one of SNCF's brands (« TER Bretagne », « TGV INOUI »).
+      return /\b(sncf|ouigo)\b/i.test(agency) || /^(ter|tgv|intercit[ée]s)\b/i.test(agency) ? "sncf" : "";
+    },
+    detect: (s) => Array.isArray(tbAttr(s, "next_departures")) && Array.isArray(tbAttr(s, "next_departures_headsign")),
+    read(s, _hass, { kind, now }) {
+      const a = s.attributes;
+      const arr = kind === "arrival";
+      // « 2026-11-14T08:12:00+00:00 (text) »: the time and the text of a timetable entry.
+      const entry = (v) => {
+        const m = tbStr(v).match(/^(\S+)\s+\((.*)\)$/);
+        return m ? { time: tbTime(m[1], now), text: m[2].trim() } : { time: tbTime(v, now), text: "" };
+      };
+      const lines = tbList(a.next_departures_lines).map(entry);
+      const heads = tbList(a.next_departures_headsign).map(entry);
+      const trips = tbList(a.next_departures_trips);
+      const arrivals = tbList(a.next_departures_destination_arrival_times);
+      const from = tbStr(a.origin_station_stop_name);
+      const to = tbStr(a.destination_station_stop_name);
+      // Route type: « High Speed Rail Service », « Regional Rail Service », « Rail », « Bus »…
+      const mode = tbStr(a.route_type_name);
+      const family = /high speed/i.test(mode)
+        ? "high_speed"
+        : /long distance|inter regional|sleeper/i.test(mode)
+          ? "intercity"
+          : /suburban|urban|subway|metro|tram/i.test(mode)
+            ? "suburban"
+            : /bus|coach|trolley/i.test(mode)
+              ? "bus"
+              : /rail/i.test(mode)
+                ? "regional"
+                : "";
+      // GTFS-RT: the expected times of the route at the stop, sorted, and their delays (seconds) in another order;
+      // each scheduled train takes the first unused expected time from a minute before it to 90 minutes after whose
+      // gap to it is one of the delays given (within a minute): the expected time of the next train is not taken for
+      // one without real-time data.
+      const rt = Array.isArray(a.next_departures_realtime) ? a.next_departures_realtime.map((v) => tbTime(v, now)).filter((v) => v !== null) : null;
+      const delays = Array.isArray(a.next_delays_realtime) ? a.next_delays_realtime.map(tbNum).filter((v) => v !== null) : null;
+      const used = new Set();
+      const fits = (gap) => !delays?.length || delays.some((d) => Math.abs(gap / 1000 - d) <= 60);
+      const realtime = (scheduled) => {
+        if (!rt || scheduled === null) return null;
+        const i = rt.findIndex((e, j) => !used.has(j) && e >= scheduled - 60000 && e <= scheduled + 90 * 60000 && fits(e - scheduled));
+        if (i < 0) return null;
+        used.add(i);
+        return rt[i];
+      };
+      const first = tbStr(a.trip_id ?? a.trip_trip_id);
+      const number = tbStr(a.trip_short_name ?? a.trip_trip_short_name);
+      const trains = tbList(a.next_departures).map((dep, i) => {
+        const scheduled = tbTime(dep, now);
+        const arrival = tbTime(arrivals[i], now);
+        const line = lines[i]?.text || "";
+        // « TER/Rennes - Nantes »: the short name of the route (its category), then its long name.
+        const short = line.split("/")[0].trim();
+        const split = tbSplitTrain(short);
+        const expected = arr ? null : realtime(scheduled);
+        return tbTrain({
+          key: tbStr(trips[i]) || undefined,
+          scheduled: arr ? arrival : scheduled,
+          expected,
+          realtime: expected !== null,
+          place: arr ? from : heads[i]?.text || to,
+          type: split.type,
+          number: (first && tbStr(trips[i]) === first && number) || split.number,
+          label: short,
+          family,
+          stops: arr ? [] : [{ name: to, time: arrival }],
+        });
+      });
+      const alerts = [a.origin_stop_alert, a.destination_stop_alert].filter((m) => m && !/^no info$/i.test(tbStr(m)));
+      return { station: arr ? to : from, trains, messages: alerts, brand: this.brandOf(s) };
+    },
+  },
 ];
 
 const TB_ADAPTER = Object.fromEntries(TB_ADAPTERS.map((a) => [a.id, a]));
@@ -617,7 +699,13 @@ const tbRead = (hass, entityId, { kind = "departure", integration, now = Date.no
   }
   const trains = r.trains.filter((t) => t.scheduled !== null || t.cancelled);
   trains.sort((a, b) => (a.scheduled ?? 0) - (b.scheduled ?? 0));
-  return { adapter, station: r.station || tbStr(s.attributes?.friendly_name), trains, messages: [...new Set(r.messages.map(tbMessage).filter(Boolean))] };
+  return {
+    adapter,
+    brand: r.brand ?? adapter.brand,
+    station: r.station || tbStr(s.attributes?.friendly_name),
+    trains,
+    messages: [...new Set(r.messages.map(tbMessage).filter(Boolean))],
+  };
 };
 
 // The entities the card can show: those of a supported integration (for the editor and the stub configuration).
@@ -631,5 +719,7 @@ const tbCandidates = (hass) =>
       const tk = hass.entities?.[id]?.translation_key;
       if (a.id === "trafikverket_train") return !tk || tk === "departure_time";
       if (a.id === "swiss_public_transport") return !tk || tk === "departure0";
+      // GTFS2 also has local stop sensors (departures around a place): its route sensors only.
+      if (a.id === "gtfs2") return a.detect(hass.states[id]);
       return true;
     });

@@ -425,3 +425,32 @@ export const trainTraveler = () =>
       friendly_name: "Rennes - Nantes Journeys",
     }),
   ]);
+
+// vingerha/gtfs2: a route sensor (SNCF open data), with the GTFS-RT expected times of the route at the stop.
+export const gtfs2 = () =>
+  hassOf(
+    [
+      st("sensor.ter_rennes_to_nantes_next_departure", at(5), {
+        attribution: "SNCF",
+        arrival: at(80),
+        origin_station_stop_name: "Rennes",
+        destination_station_stop_name: "Nantes",
+        route_type_name: "Rail",
+        trip_id: "OCESN858412F",
+        trip_short_name: "858412",
+        next_departures: [at(5), at(35), at(65)],
+        next_departures_lines: [`${at(5)} (TER/Rennes - Nantes)`, `${at(35)} (TER/Rennes - Nantes)`, `${at(65)} (TER/Rennes - Nantes)`],
+        next_departures_headsign: [`${at(5)} (Nantes)`, `${at(35)} (Savenay)`, `${at(65)} (Nantes)`],
+        next_departures_trips: ["OCESN858412F", "OCESN858414F", "OCESN858416F"],
+        next_departures_destination_arrival_times: [at(80), at(110), at(140)],
+        origin_stop_alert: "Works between Redon and Nantes",
+        destination_stop_alert: "no info",
+        gtfs_rt_updated_at: at(-1),
+        next_departures_realtime: [at(12), at(35)],
+        next_delays_realtime: [0, 420],
+        device_class: "timestamp",
+        friendly_name: "SNCF Rennes to Nantes next departure",
+      }),
+    ],
+    { "sensor.ter_rennes_to_nantes_next_departure": { platform: "gtfs2", device_id: null } },
+  );

@@ -75,6 +75,15 @@ test("integrations without arrivals or platforms: no tabs, no platform column, n
   assert.equal(rows.length, 3);
   assert.doesNotMatch(rows[1], /class="chip/);
   assert.equal(stats(tv), "Departures 3 trains 0% on time");
+  // GTFS2: no platform in a GTFS timetable; the trains without GTFS-RT data have no status pill.
+  const gt = mount("train-board-card", { entity: "sensor.ter_rennes_to_nantes_next_departure" }, fx.gtfs2());
+  assert.match(html(gt), /class="list no-plat"/);
+  assert.doesNotMatch(html(gt), /class="tabs"/);
+  const gr = html(gt).match(/<div class="row"[\s\S]*?<\/div>/g);
+  assert.equal(gr.length, 3);
+  assert.match(html(gt), /\+7 min/);
+  assert.match(html(gt), /class="notice"[\s\S]*Works between Redon and Nantes/);
+  assert.match(html(gt), /<span class="badge" title="GTFS2"><img src="data:image\/svg\+xml,/);
 });
 
 test("boarding: a departure two minutes away; arrived: an arrival whose time has passed", () => {
@@ -323,6 +332,7 @@ test("brand badge: the operator of the integration on the header icon, only when
     nmbs: "sncb",
     uk_transport: "nationalrail",
     train_traveler: "sncf",
+    gtfs2: undefined,
   });
 });
 
