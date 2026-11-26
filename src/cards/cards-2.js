@@ -425,7 +425,7 @@ export class TrainBoardCard extends TbBase {
       if (d && d !== day) {
         const tomorrow = tbDayOf(this._hass, now + 864e5);
         const text = d === tomorrow ? this._t("tomorrow") : new Date(t.scheduled).toLocaleDateString(tbFmtLang(this._hass, c), { weekday: "long", day: "numeric", month: "long", timeZone: this._hass?.locale?.time_zone === "server" ? this._hass?.config?.time_zone : undefined });
-        sep = `<div class="day-sep muted" role="separator">${tbEsc(text)}</div>`;
+        sep = `<div class="day-sep muted" role="separator" data-key="day-${tbEsc(d)}">${tbEsc(text)}</div>`;
         day = d;
       }
       const num = showNum && t.number && t.number !== t.type && t.number !== t.line ? `<span class="num muted">${tbEsc(t.number)}</span>` : "";

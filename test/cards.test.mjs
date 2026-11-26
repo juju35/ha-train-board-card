@@ -378,7 +378,7 @@ test("GTFS2 with SNCF TER lines: « C17 » whole in the pill, train number, arri
   assert.match(h, /<span class="type"[^>]*>C17<\/span>/);
   assert.match(h, /<span class="dest">Paris Gare du Nord<\/span><span class="num muted">847428<\/span><span class="arr muted"/);
   assert.doesNotMatch(text(h), /None/);
-  assert.match(h, /<div class="day-sep muted" role="separator">Tomorrow<\/div>/);
+  assert.match(h, /<div class="day-sep muted" role="separator" data-key="day-[\d-]+">Tomorrow<\/div>/);
   assert.equal((h.match(/class="day-sep/g) || []).length, 1);
   const off = html(mount("train-board-card", { entity: "sensor.gtfs_beauvais_paris", show_arrival_time: false }, fx.gtfs2Line()));
   assert.doesNotMatch(off, /class="arr muted"/);

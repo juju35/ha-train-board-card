@@ -51,12 +51,16 @@ export const tbFilter = (trains, config, kind, now) => {
   );
 };
 
+const _tbDayFormats = new Map();
 // The day of a time (« 2026-11-26 »), in the time zone the times are shown in (see tbClock), to split the list by day.
 export const tbDayOf = (hass, ms) => {
   if (ms === null || ms === undefined) return "";
   const timeZone = hass?.locale?.time_zone === "server" ? hass?.config?.time_zone : undefined;
   try {
-    return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+    // One formatter per time zone, not one per row.
+    let f = _tbDayFormats.get(timeZone);
+    if (!f) _tbDayFormats.set(timeZone, (f = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" })));
+    return f.format(new Date(ms));
   } catch (_e) {
     return new Date(ms).toISOString().slice(0, 10);
   }
