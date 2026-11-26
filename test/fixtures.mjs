@@ -454,3 +454,33 @@ export const gtfs2 = () =>
     ],
     { "sensor.ter_rennes_to_nantes_next_departure": { platform: "gtfs2", device_id: null } },
   );
+
+// vingerha/gtfs2 with SNCF TER lines (issue #29): a line name as route short name (« C17 »), the train number as
+// headsign, no trip short name, the category in the trip id, no real-time feed, and a departure the next morning.
+export const gtfs2Line = () =>
+  hassOf(
+    [
+      st("sensor.gtfs_beauvais_paris", at(5), {
+        attribution: "SNCF",
+        origin_station_stop_name: "Beauvais",
+        destination_station_stop_name: "Paris Gare du Nord",
+        route_route_short_name: "C17",
+        route_route_long_name: "Paris Nord - Beauvais",
+        route_route_color: "0749FF",
+        route_route_text_color: "FFFFFF",
+        route_type_name: "Rail",
+        trip_trip_id: "OCESN847428F1187_F:TER:FR:Line::1",
+        trip_trip_short_name: "None",
+        trip_trip_headsign: "847428",
+        info_realtime: "No realtime information",
+        next_departures: [at(5), at(65), at(24 * 60)],
+        next_departures_lines: [`${at(5)} (C17/Paris Nord - Beauvais)`, `${at(65)} (C17/Paris Nord - Beauvais)`, `${at(24 * 60)} (C17/Paris Nord - Beauvais)`],
+        next_departures_headsign: [`${at(5)} (847428)`, `${at(65)} (847430)`, `${at(24 * 60)} (847402)`],
+        next_departures_trips: ["OCESN847428F1187_F:TER:FR:Line::1", "OCESN847430F1187_F:TER:FR:Line::1", "OCESN847402F1187_F:TER:FR:Line::1"],
+        next_departures_destination_arrival_times: [at(80), at(140), at(24 * 60 + 75)],
+        device_class: "timestamp",
+        friendly_name: "Beauvais - Paris",
+      }),
+    ],
+    { "sensor.gtfs_beauvais_paris": { platform: "gtfs2", device_id: null } },
+  );

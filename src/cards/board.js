@@ -18,6 +18,7 @@ export const TB_DEFAULTS = {
   show_platform: true,
   show_train_number: true,
   show_via: false,
+  show_arrival_time: true,
   hide_cancelled: false,
   show_messages: true,
   zoom: true,
@@ -42,8 +43,23 @@ export const tbFilter = (trains, config, kind, now) => {
       !tbGone(t, kind, now) &&
       !(tbOpt(config, "hide_cancelled") && t.cancelled) &&
       (!platforms.length || platforms.includes(tbNormPlatform(t.platform))) &&
-      (!types.length || types.includes(t.type) || types.includes(t.label.toUpperCase()) || types.includes(t.family.toUpperCase())),
+      (!types.length ||
+        types.includes(t.type) ||
+        types.includes(t.line.toUpperCase()) ||
+        types.includes(t.label.toUpperCase()) ||
+        types.includes(t.family.toUpperCase())),
   );
+};
+
+// The day of a time (« 2026-11-26 »), in the time zone the times are shown in (see tbClock), to split the list by day.
+export const tbDayOf = (hass, ms) => {
+  if (ms === null || ms === undefined) return "";
+  const timeZone = hass?.locale?.time_zone === "server" ? hass?.config?.time_zone : undefined;
+  try {
+    return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+  } catch (_e) {
+    return new Date(ms).toISOString().slice(0, 10);
+  }
 };
 
 // Share of the trains on time, among those with real-time information (cancelled ones count as late).

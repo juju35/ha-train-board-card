@@ -138,6 +138,9 @@ export const TB_FULL_STYLE = `
   .main { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
   .line { display: flex; align-items: center; gap: 6px; min-width: 0; }
   .dest { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+  .arr { flex: none; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .day-sep { padding: 8px 8px 2px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .day-sep + .row::before { display: none; }
   .num { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; min-width: 3ch; }
   .via { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .status { justify-self: end; min-width: 0; max-width: 100%; display: flex; justify-content: flex-end; }

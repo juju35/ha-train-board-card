@@ -369,3 +369,23 @@ test("local times are read in Home Assistant's time zone, not the browser's", ()
   d.states["sensor.koln_hbf_arrivals"].attributes.next_departures[0].scheduledArrival = "2026-11-14 03:06";
   assert.equal(read(d, "sensor.koln_hbf_arrivals", "arrival").trains[0].scheduled, min(6));
 });
+
+test("GTFS2 with SNCF TER lines: line name whole, destination stop, headsign as train number, category from the trip id (#29)", () => {
+  const r = read(fx.gtfs2Line(), "sensor.gtfs_beauvais_paris");
+  const [a, b] = r.trains;
+  assert.deepEqual(pick(a, ["type", "line", "number", "place", "color", "platform", "family", "realtime", "arrival"]), {
+    type: "TER",
+    line: "C17",
+    number: "847428",
+    place: "Paris Gare du Nord",
+    color: "0749FF",
+    platform: "",
+    family: "regional",
+    realtime: false,
+    arrival: min(80),
+  });
+  assert.deepEqual(pick(b, ["type", "line", "number"]), { type: "TER", line: "C17", number: "847430" });
+  // The arrivals of the reverse route: no train number from a « None » trip short name.
+  const arr = tb.tbRead(fx.gtfs2Line(), "sensor.gtfs_beauvais_paris", { kind: "arrival", now: NOW });
+  assert.ok(arr.trains.every((t) => t.number !== "None" && t.line === "C17"));
+});
