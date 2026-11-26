@@ -2,12 +2,14 @@
 // Integrations: each adapter reads the entity of one integration into the card's own train model.
 //
 // A train, whatever its integration:
-//   { key, scheduled, expected, delay, cancelled, delayedUnknown, realtime, place, type, number, label, color,
-//     platform, platformChanged, via: [names], stops: [{ name, time }], messages: [texts], operator }
+//   { key, scheduled, expected, delay, cancelled, delayedUnknown, realtime, place, type, line, number, label, color,
+//     platform, platformChanged, via: [names], stops: [{ name, time }], arrival, messages: [texts], operator }
 // - scheduled / expected: times in ms (expected null when the integration has no real time for the train);
 // - delay: minutes behind the timetable (null when unknown); delayedUnknown: « Delayed » without a time (Darwin);
 // - place: the destination of a departure, the origin of an arrival;
 // - type: the category (ICE, TGV, TER, IC, RE, S…), number: the train or line number, label: both as announced;
+// - line: a line name shown whole in the pill instead of the category (GTFS route « C17 »), empty otherwise;
+// - arrival: the time at the end of the route (GTFS route sensors: the destination stop), null when unknown;
 // - realtime: false for a train known from the timetable only (no status pill).
 // An adapter returns { station, trains, messages }, `messages` being the station's notices.
 // ---------------------------------------------------------------------------
@@ -104,6 +106,10 @@ const tbSplitTrain = (label) => {
   return /^[A-Za-zÀ-ÿ]+$/.test(first[0]) ? { type: first[0].toUpperCase(), number: first.slice(1).join(" ") } : { type: "", number: s };
 };
 
+// The category of a GTFS trip from its id, when the feed writes it there (SNCF: « OCESN847428F1187_F:TER:FR:Line::… »).
+const TB_GTFS_CATEGORIES = ["TER", "TGV", "INOUI", "OUIGO", "INTERCITES", "IC", "ICN", "TRANSILIEN", "RER", "LYRIA", "EUROSTAR", "TRAMTRAIN"];
+const tbGtfsCategory = (tripId) => tbStr(tripId).toUpperCase().split(/[:_]/).find((p) => TB_GTFS_CATEGORIES.includes(p)) || "";
+
 // Train categories by family, for the colour of their pill.
 const TB_FAMILIES = {
   high_speed: ["TGV", "INOUI", "OUIGO", "ICE", "ECE", "RJ", "RJX", "FR", "FA", "FB", "AV", "AVE", "AVLO", "ALVIA", "EST", "ES", "THA", "EUROSTAR", "LYRIA", "TGV INOUI", "FRECCIAROSSA", "ICD", "X2000", "SJ SNABBTÅG"],
@@ -136,6 +142,7 @@ const tbTrain = (t) => {
     realtime: true,
     place: "",
     type: "",
+    line: "",
     number: "",
     label: "",
     color: "",
@@ -144,6 +151,7 @@ const tbTrain = (t) => {
     platformChanged: false,
     via: [],
     stops: [],
+    arrival: null,
     messages: [],
     operator: "",
     ...t,
@@ -155,8 +163,9 @@ const tbTrain = (t) => {
   out.place = tbStr(out.place);
   out.platform = tbStr(out.platform);
   out.type = tbStr(out.type).toUpperCase();
-  out.number = tbStr(out.number);
-  if (!out.label) out.label = [out.type, out.number].filter(Boolean).join(" ");
+  out.line = tbStr(out.line);
+  out.number = TB_NO_VALUE.has(tbStr(out.number)) ? "" : tbStr(out.number);
+  if (!out.label) out.label = [out.type, out.line || out.number].filter(Boolean).join(" ");
   out.family = tbFamily(out.type, out.family);
   out.via = tbList(out.via).map(tbStr).filter(Boolean);
   out.messages = [...new Set(tbList(out.messages).map(tbMessage).filter(Boolean))];
@@ -643,26 +652,39 @@ const TB_ADAPTERS = [
         return rt[i];
       };
       const first = tbStr(a.trip_id ?? a.trip_trip_id);
-      const number = tbStr(a.trip_short_name ?? a.trip_trip_short_name);
+      const firstNumber = tbStr(a.trip_short_name ?? a.trip_trip_short_name);
+      const routeShort = tbStr(a.route_short_name ?? a.route_route_short_name);
+      const routeColor = tbStr(a.route_color ?? a.route_route_color);
       const trains = tbList(a.next_departures).map((dep, i) => {
         const scheduled = tbTime(dep, now);
         const arrival = tbTime(arrivals[i], now);
-        const line = lines[i]?.text || "";
-        // « TER/Rennes - Nantes »: the short name of the route (its category), then its long name.
-        const short = line.split("/")[0].trim();
+        const trip = tbStr(trips[i]);
+        // « C17/Paris Nord - Beauvais »: the short name of the route, then its long name. The short name is a
+        // category (« TER », « TGV INOUI ») or a line name (« C17 », SNCF's TER lines), shown whole in the pill.
+        const short = (lines[i]?.text || "").split("/")[0].trim();
         const split = tbSplitTrain(short);
+        const isCategory = !!split.type && Object.values(TB_FAMILIES).some((types) => types.includes(split.type));
+        const type = isCategory ? split.type : tbGtfsCategory(trip || (i === 0 ? first : ""));
+        const line = isCategory ? "" : short;
+        // The headsign is the destination's name, or the train number in some feeds (SNCF: « 847428 »).
+        const head = heads[i]?.text || "";
+        const headIsNumber = /^\d[\w-]*$/.test(head) && !TB_NO_VALUE.has(head);
+        const own = first && trip === first && !TB_NO_VALUE.has(firstNumber) ? firstNumber : "";
         const expected = arr ? null : realtime(scheduled);
         return tbTrain({
-          key: tbStr(trips[i]) || undefined,
+          key: trip || undefined,
           scheduled: arr ? arrival : scheduled,
           expected,
           realtime: expected !== null,
-          place: arr ? from : heads[i]?.text || to,
-          type: split.type,
-          number: (first && tbStr(trips[i]) === first && number) || split.number,
-          label: short,
+          place: arr ? from : (!headIsNumber && head) || to,
+          type,
+          line,
+          number: own || (headIsNumber ? head : "") || (isCategory ? split.number : ""),
+          label: [type, short && short !== type ? short : ""].filter(Boolean).join(" "),
+          color: routeShort && short === routeShort ? routeColor : "",
           family,
           stops: arr ? [] : [{ name: to, time: arrival }],
+          arrival: arr ? null : arrival,
         });
       });
       const alerts = [a.origin_stop_alert, a.destination_stop_alert].filter((m) => m && !/^no info$/i.test(tbStr(m)));

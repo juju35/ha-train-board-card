@@ -2,7 +2,7 @@
 // Cards
 // ---------------------------------------------------------------------------
 import { TB_BRAND_LOGOS, TB_ICONS, tbClock, tbDeviceEntities, tbEsc, tbFill, tbFmtLang, tbIcon, tbPlural, tbT } from "./train-board-card.js";
-import { tbBoard, tbBoardStatus, tbColor, tbIsNight, tbOpt, tbSafeColor, tbStatus } from "./board.js";
+import { tbBoard, tbBoardStatus, tbColor, tbDayOf, tbIsNight, tbOpt, tbSafeColor, tbStatus } from "./board.js";
 import { tbCssEsc, tbInDialog, tbMorph, tbTextWidth, tbWatchOutside } from "./in-place-updates.js";
 import { TB_BANNER_STYLE, TB_BASE_STYLE, TB_DIALOG_STYLE, TB_FULL_STYLE, TB_MINI_STYLE } from "./styles.js";
 
@@ -291,8 +291,10 @@ export class TbBase extends HTMLElement {
   }
 
   _typePill(t) {
-    if (!t.type) return "";
-    return `<span class="type" style="--c:${tbEsc(tbSafeColor(tbColor(this._config, t)))}">${tbEsc(t.type)}</span>`;
+    // A line name (GTFS route « C17 ») is shown whole, else the category.
+    const text = t.line || t.type;
+    if (!text) return "";
+    return `<span class="type" style="--c:${tbEsc(tbSafeColor(tbColor(this._config, t)))}">${tbEsc(text)}</span>`;
   }
 
   _statusPill(t, kind, now) {
@@ -412,14 +414,27 @@ export class TrainBoardCard extends TbBase {
     const plat = tbOpt(c, "show_platform") && trains.some((t) => t.platform);
     const showNum = tbOpt(c, "show_train_number");
     const showVia = tbOpt(c, "show_via");
+    const showArr = tbOpt(c, "show_arrival_time") && tab.kind === "departure";
+    const today = tbDayOf(this._hass, now);
+    let day = today;
     const rows = trains.map((t) => {
       const key = tbEsc(t.key);
-      const num = showNum && t.number && t.number !== t.type ? `<span class="num muted">${tbEsc(t.number)}</span>` : "";
+      // A train on another day than the one before it (evening lists running into the next morning): a separator.
+      const d = tbDayOf(this._hass, t.scheduled);
+      let sep = "";
+      if (d && d !== day) {
+        const tomorrow = tbDayOf(this._hass, now + 864e5);
+        const text = d === tomorrow ? this._t("tomorrow") : new Date(t.scheduled).toLocaleDateString(tbFmtLang(this._hass, c), { weekday: "long", day: "numeric", month: "long", timeZone: this._hass?.locale?.time_zone === "server" ? this._hass?.config?.time_zone : undefined });
+        sep = `<div class="day-sep muted" role="separator" data-key="day-${tbEsc(d)}">${tbEsc(text)}</div>`;
+        day = d;
+      }
+      const num = showNum && t.number && t.number !== t.type && t.number !== t.line ? `<span class="num muted">${tbEsc(t.number)}</span>` : "";
+      const arrive = showArr && t.arrival !== null ? `<span class="arr muted" title="${tbEsc(this._t("arrival_time"))}">→ ${tbEsc(tbClock(this._hass, c, t.arrival))}</span>` : "";
       const via = showVia && t.via.length ? `<span class="via muted">${tbEsc(tbFill(this._t("via"), { list: t.via.join(", ") }))}</span>` : "";
       const label = [tbClock(this._hass, c, t.scheduled), t.label, this._place(t, tab.kind)].filter(Boolean).join(" ");
-      return `<div class="row" role="button" tabindex="0" data-train="${key}" data-key="${key}" aria-label="${tbEsc(label)}">
+      return `${sep}<div class="row" role="button" tabindex="0" data-train="${key}" data-key="${key}" aria-label="${tbEsc(label)}">
         <span class="time${t.cancelled ? " struck" : ""}">${tbEsc(tbClock(this._hass, c, t.scheduled))}</span>
-        <span class="main"><span class="line">${this._typePill(t)}<span class="dest">${tbEsc(this._place(t, tab.kind))}</span>${num}</span>${via}</span>
+        <span class="main"><span class="line">${this._typePill(t)}<span class="dest">${tbEsc(this._place(t, tab.kind))}</span>${num}${arrive}</span>${via}</span>
         ${plat ? `<span class="plat${t.platformChanged ? " changed" : ""}">${tbEsc(t.platform)}</span>` : ""}
         <span class="status">${this._statusPill(t, tab.kind, now)}</span>
       </div>`;

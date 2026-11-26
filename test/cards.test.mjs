@@ -371,3 +371,15 @@ test("the popup's opener selector escapes a train key holding a quote or a backs
   tb.sandbox.fire("keydown", { key: "Escape", stopPropagation() {} });
   assert.equal(card._popup, null);
 });
+
+test("GTFS2 with SNCF TER lines: « C17 » whole in the pill, train number, arrival time, and a separator before tomorrow's trains (#29)", () => {
+  const card = mount("train-board-card", { entity: "sensor.gtfs_beauvais_paris", max_trains: 4 }, fx.gtfs2Line());
+  const h = html(card);
+  assert.match(h, /<span class="type"[^>]*>C17<\/span>/);
+  assert.match(h, /<span class="dest">Paris Gare du Nord<\/span><span class="num muted">847428<\/span><span class="arr muted"/);
+  assert.doesNotMatch(text(h), /None/);
+  assert.match(h, /<div class="day-sep muted" role="separator" data-key="day-[\d-]+">Tomorrow<\/div>/);
+  assert.equal((h.match(/class="day-sep/g) || []).length, 1);
+  const off = html(mount("train-board-card", { entity: "sensor.gtfs_beauvais_paris", show_arrival_time: false }, fx.gtfs2Line()));
+  assert.doesNotMatch(off, /class="arr muted"/);
+});

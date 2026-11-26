@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0 - 2026-11-26
+
+### Features
+- A **day separator** in the board (« Tomorrow », then the date) when the list runs into the next day — evening lists of GTFS2 timetables going from 20:10 to 05:14.
+- `show_arrival_time` option (on by default, also in the visual editor): the arrival time at the destination after the train in the Departures tab (`→ 11:42`), for GTFS2 route sensors.
+
+### Fixes
+- GTFS2 with SNCF TER data: a line name as route short name (« C17 ») is shown whole in the pill, in the route's colour, instead of being split into a « C » type and a « 17 » train number; the category comes from the trip id (`…:TER:…`), so the train type filter works with `TER`. When the headsign holds the train number (« 847428 »), the destination stop is shown as the destination and the headsign as the train number (hidden by `show_train_number: false`). A `None` trip short name is no longer shown as a train number, in both tabs. Fixes #29.
+
 ## 1.5.0 - 2026-11-25
 
 ### Features

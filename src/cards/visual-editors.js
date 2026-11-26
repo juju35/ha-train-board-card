@@ -4,7 +4,7 @@
 import { tbLang, tbT } from "./train-board-card.js";
 import { TB_DEFAULTS } from "./board.js";
 
-export const TB_TOGGLES = ["illustration", "show_departures", "show_arrivals", "show_platform", "show_train_number", "show_via", "hide_cancelled", "show_messages"];
+export const TB_TOGGLES = ["illustration", "show_departures", "show_arrivals", "show_platform", "show_train_number", "show_via", "show_arrival_time", "hide_cancelled", "show_messages"];
 
 // The entity picker lists what the card can read: the sensors of a supported integration and those recognised by
 // their attributes only (template, REST). Scanning every state is memoised on the entity registry and the number of
